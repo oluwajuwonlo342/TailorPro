@@ -16,7 +16,7 @@ export default function ContactPage() {
 
     try {
       // Send the data to your new backend route
-      await axios.post('http://localhost:5000/api/contact', formData);
+      await axios.post('https://tailorprobackend.onrender.com/api/contact', formData);
       
       setSubmitted(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
