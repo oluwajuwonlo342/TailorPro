@@ -138,7 +138,7 @@ export default function ManageTailors() {
                       {tailor.phoneNumber || tailor.phone || <span className="text-gray-400 italic">Not set</span>}
                     </td>
                     <td className="p-5">
-                      {tailor.subscriptionStatus === 'pro' ? (
+                      {tailor.plan === 'pro' ? (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
                           <CheckCircle className="w-3 h-3 mr-1" /> PRO
                         </span>
