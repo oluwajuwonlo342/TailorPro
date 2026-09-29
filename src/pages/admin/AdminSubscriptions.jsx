@@ -44,7 +44,7 @@ export default function AdminSubscriptions() {
         // Dynamically recalculate the top metrics
         const totalPro = updatedSubscribers.filter(s => s.plan === 'pro').length;
         const totalFree = updatedSubscribers.filter(s => s.plan === 'free').length;
-        const monthlyRevenue = totalPro * 5000;
+        const monthlyRevenue = totalPro * 3500;
 
         return {
           metrics: { totalPro, totalFree, monthlyRevenue },
