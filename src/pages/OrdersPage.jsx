@@ -331,17 +331,17 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Professional PDF Invoice Modal */}
+  {/* Professional PDF Invoice Modal */}
       {invoiceOrder && (
         <InvoiceModal 
           isOpen={!!invoiceOrder}
           order={invoiceOrder}
           customer={invoiceOrder.customer}
           businessName={businessName}
+          logoUrl={user?.profilePhoto} // <--- Updated to match your database
           onClose={() => setInvoiceOrder(null)}
         />
       )}
-
     </div>
   );
 }
