@@ -11,7 +11,7 @@ export default function OrderCreate() {
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
-    customer: '',
+    customerId: '', // Changed from customer to customerId to match backend
     outfitName: '',
     fabricDescription: '',
     dueDate: '',
@@ -24,7 +24,6 @@ export default function OrderCreate() {
     const fetchCustomers = async () => {
       try {
         const response = await api.get('/customers');
-        // Handle different response structures gracefully
         const list = response.data.data || response.data || [];
         setCustomers(list);
       } catch (err) {
@@ -46,7 +45,7 @@ export default function OrderCreate() {
     e.preventDefault();
     setError('');
 
-    if (!formData.customer) {
+    if (!formData.customerId) {
       setError('Please select a customer for this order.');
       return;
     }
@@ -61,9 +60,8 @@ export default function OrderCreate() {
 
     setIsSubmitting(true);
     try {
-      // Ensure we send clean payload matching backend expectations
       const payload = {
-        customer: formData.customer, // This is the customer _id
+        customerId: formData.customerId, // Explicitly sending customerId as expected by backend
         outfitName: formData.outfitName,
         fabricDescription: formData.fabricDescription,
         dueDate: formData.dueDate,
@@ -71,8 +69,6 @@ export default function OrderCreate() {
         amountPaid: paid,
         notes: formData.notes
       };
-
-      console.log("Submitting order payload:", payload);
 
       await api.post('/orders', payload);
       navigate('/orders');
@@ -125,9 +121,9 @@ export default function OrderCreate() {
               </div>
             ) : (
               <select
-                name="customer"
+                name="customerId"
                 required
-                value={formData.customer}
+                value={formData.customerId}
                 onChange={handleChange}
                 className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-brand-dark outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all cursor-pointer"
               >
