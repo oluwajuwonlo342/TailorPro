@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import { ArrowLeft, ShoppingBag, Calendar, DollarSign, FileText, User, Scissors, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Scissors, AlertCircle } from 'lucide-react';
 
 export default function OrderCreate() {
   const navigate = useNavigate();
@@ -24,7 +24,9 @@ export default function OrderCreate() {
     const fetchCustomers = async () => {
       try {
         const response = await api.get('/customers');
-        setCustomers(response.data.data || []);
+        // Handle different response structures gracefully
+        const list = response.data.data || response.data || [];
+        setCustomers(list);
       } catch (err) {
         console.error("Failed to load customers", err);
         setError("Failed to load customer list. Please try refreshing.");
@@ -59,15 +61,24 @@ export default function OrderCreate() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/orders', {
-        ...formData,
+      // Ensure we send clean payload matching backend expectations
+      const payload = {
+        customer: formData.customer, // This is the customer _id
+        outfitName: formData.outfitName,
+        fabricDescription: formData.fabricDescription,
+        dueDate: formData.dueDate,
         totalAmount: total,
-        amountPaid: paid
-      });
+        amountPaid: paid,
+        notes: formData.notes
+      };
+
+      console.log("Submitting order payload:", payload);
+
+      await api.post('/orders', payload);
       navigate('/orders');
     } catch (err) {
-      console.error("Order creation error:", err);
-      setError(err.response?.data?.error || 'Failed to create order. Please check your inputs.');
+      console.error("Order creation error response:", err.response?.data);
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to create order. Please check your inputs.');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,7 +129,7 @@ export default function OrderCreate() {
                 required
                 value={formData.customer}
                 onChange={handleChange}
-                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-brand-dark outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-brand-dark outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all cursor-pointer"
               >
                 <option value="">-- Choose Customer --</option>
                 {customers.map(c => (
@@ -130,7 +141,7 @@ export default function OrderCreate() {
             )}
           </div>
 
-          {/* Outfit Name & Fabric Description */}
+          {/* Outfit Name & Due Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Outfit / Style Name *</label>
@@ -152,7 +163,7 @@ export default function OrderCreate() {
                 required
                 value={formData.dueDate}
                 onChange={handleChange}
-                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-brand-dark outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-brand-dark outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all cursor-pointer"
               />
             </div>
           </div>
