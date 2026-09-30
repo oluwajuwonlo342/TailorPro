@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import InvoiceModal from '../InvoiceModal';
+import InvoiceModal from 'InvoiceModal';
 
 import { ShoppingBag, Plus, Search, Calendar, DollarSign, CheckCircle2, Clock, Trash2, Share2, Filter, AlertCircle, CreditCard, X, Printer, Scissors } from 'lucide-react';
 
