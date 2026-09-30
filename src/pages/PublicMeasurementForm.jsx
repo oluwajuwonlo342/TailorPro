@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api'; // Use your dynamic API instance instead of hardcoded localhost
 import { Scissors, CheckCircle2 } from 'lucide-react';
 
 export default function PublicMeasurementForm() {
   const [searchParams] = useSearchParams();
   
-  // Grab the tokens from the URL (e.g. ?token=12345&sid=67890)
-  const customerToken = searchParams.get('token'); 
+  // FIX: Accept both 'token' and 'cid' so existing dashboard links don't break
+  const customerToken = searchParams.get('token') || searchParams.get('cid'); 
   const subProfileId = searchParams.get('sid'); 
 
   const [loading, setLoading] = useState(true);
@@ -20,7 +20,6 @@ export default function PublicMeasurementForm() {
   const [measurements, setMeasurements] = useState({});
 
   useEffect(() => {
-    // 1. Validate that a token exists in the URL
     if (!customerToken) {
       setError('Invalid or missing measurement link.');
       setLoading(false);
@@ -29,12 +28,11 @@ export default function PublicMeasurementForm() {
 
     const fetchTargetDetails = async () => {
       try {
-        // 2. Point exactly to the new verified route we built: /api/measurements/public/:token
-        const res = await axios.get(`http://localhost:5000/api/measurements/public/${customerToken}`);
+        // Use your configured 'api' instance so it works on both localhost and Render
+        const res = await api.get(`/measurements/public/${customerToken}`);
         
         const customerData = res.data.customer;
         
-        // Handle if this form is for a sub-profile or the main customer
         if (subProfileId && customerData.subProfiles) {
           const subProfile = customerData.subProfiles.find(sp => sp._id === subProfileId);
           if (subProfile) {
@@ -73,9 +71,8 @@ export default function PublicMeasurementForm() {
     setError('');
 
     try {
-      // 3. Post directly to the new submit route we built: /api/measurements/public/:token
-      await axios.post(`http://localhost:5000/api/measurements/public/${customerToken}`, {
-        subProfileId, // Pass this so the backend knows if it's for a dependent
+      await api.post(`/measurements/public/${customerToken}`, {
+        subProfileId,
         targetType: subProfileId ? 'subProfile' : 'main',
         measurementsData: measurements,
         unit,
@@ -105,7 +102,6 @@ export default function PublicMeasurementForm() {
     );
   }
 
-  // If there's an error loading the page, just show the error without the form
   if (error && !targetInfo.name) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center p-4 font-sans">
@@ -139,7 +135,6 @@ export default function PublicMeasurementForm() {
             </select>
           </div>
 
-          {/* Render inputs based on gender */}
           {targetInfo.gender === 'Female' ? (
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Female Measurements</h3>
@@ -170,7 +165,6 @@ export default function PublicMeasurementForm() {
             {submitting ? 'Submitting...' : 'Submit Measurements Securely'}
           </button>
         </form>
-
       </div>
     </div>
   );
