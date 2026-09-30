@@ -119,8 +119,17 @@ export default function CustomerProfile() {
       setIsSavingNotes(false);
     }
   };
-
   const handleSaveMeasurements = async () => {
+    // Prevent saving a blank record (this is what caused the empty "Standard Measurement" row)
+    const { title, unit, _id, createdAt, updatedAt, ...values } = measurements;
+    const hasAtLeastOneValue = Object.values(values).some(
+      (v) => v !== undefined && v !== null && v !== ''
+    );
+    if (!hasAtLeastOneValue) {
+      alert('Please fill in at least one measurement before saving.');
+      return;
+    }
+
     setIsSavingMeasurements(true);
     setMeasurementsSaved(false);
     try {
@@ -140,7 +149,6 @@ export default function CustomerProfile() {
       setIsSavingMeasurements(false);
     }
   };
-
   const handleMeasurementChange = (e) => {
     setMeasurements({ ...measurements, [e.target.name]: e.target.value });
   };
@@ -171,28 +179,38 @@ export default function CustomerProfile() {
     }
     setShowSubMeasurementModal(true);
   };
-
   const handleSaveSubMeasurements = async (e) => {
     e.preventDefault();
+
+    // Prevent saving a blank family-member record
+    const { title, unit, _id, createdAt, updatedAt, ...values } = subMeasurements;
+    const hasAtLeastOneValue = Object.values(values).some(
+      (v) => v !== undefined && v !== null && v !== ''
+    );
+    if (!hasAtLeastOneValue) {
+      alert('Please fill in at least one measurement before saving.');
+      return;
+    }
+
     setIsSavingSubMeasurements(true);
     try {
       const { _id, createdAt, updatedAt, ...cleanMeasurements } = subMeasurements;
 
       const response = await api.put(`/customers/${id}/sub-profiles/${activeSubProfile._id}/measurements`, cleanMeasurements);
       const updatedCust = response.data.data;
-      
+
       const freshSub = updatedCust.subProfiles.find(s => String(s._id) === String(activeSubProfile._id));
-      
+
       let freshHistory = freshSub.measurements || [];
       if (!Array.isArray(freshHistory)) freshHistory = [freshHistory];
       freshHistory = freshHistory.map(normalizeData);
       freshSub.measurements = freshHistory;
 
-      setCustomer(updatedCust); 
+      setCustomer(updatedCust);
       setActiveSubProfile(freshSub);
       setSubMeasurements(freshHistory[0]);
       setSelectedSubIndex(0);
-      setIsEditingSubMeasurements(false); // Close edit mode after saving
+      setIsEditingSubMeasurements(false);
       alert("Sub-profile fitting saved successfully!");
     } catch (err) {
       console.error("Sub measurement error:", err);
@@ -201,7 +219,6 @@ export default function CustomerProfile() {
       setIsSavingSubMeasurements(false);
     }
   };
-
   const handleShareWhatsApp = (targetName, cid, sid = '') => {
     const formUrl = `${window.location.origin}/measure-form?token=${cid}${sid ? `&sid=${sid}` : ''}`;
     const message = encodeURIComponent(`Hello ${targetName}, please click this secure link to fill in your clothing measurements for TailorPro: ${formUrl}`);
