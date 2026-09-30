@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Scissors } from 'lucide-react';
+import { Scissors, Menu, X } from 'lucide-react';
 
 export default function PublicLayout({ children }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-brand-bg font-sans flex flex-col">
       {/* Navigation */}
@@ -11,13 +14,13 @@ export default function PublicLayout({ children }) {
             
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center transform rotate-3">
+              <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center transform rotate-3 shadow-md">
                 <Scissors className="w-6 h-6" />
               </div>
-              <span className="text-2xl font-bold text-brand-dark tracking-tight">TailorPro</span>
+              <span className="text-xl sm:text-2xl font-bold text-brand-dark tracking-tight">TailorPro</span>
             </Link>
 
-            {/* Desktop Nav Links (Updated with root path anchors) */}
+            {/* Desktop Nav Links */}
             <div className="hidden md:flex items-center space-x-8">
               <Link to="/#features" className="text-gray-600 hover:text-primary transition font-medium">Features</Link>
               <Link to="/#pricing" className="text-gray-600 hover:text-primary transition font-medium">Pricing</Link>
@@ -25,17 +28,69 @@ export default function PublicLayout({ children }) {
               <Link to="/contact" className="text-gray-600 hover:text-primary transition font-medium">Contact</Link>
             </div>
 
-            {/* CTA Buttons */}
-            <div className="flex items-center space-x-4">
-              <Link to="/login" className="text-brand-dark font-medium hover:text-primary hidden sm:block">
+            {/* CTA Buttons & Mobile Hamburger Icon */}
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <Link to="/login" className="text-brand-dark font-medium hover:text-primary text-sm sm:text-base hidden sm:block">
                 Log In
               </Link>
-              <Link to="/register" className="bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-dark transition shadow-sm">
+              <Link to="/register" className="bg-primary text-white px-4 sm:px-5 py-2.5 rounded-xl font-medium text-sm sm:text-base hover:bg-primary-dark transition shadow-sm">
                 Start Free
               </Link>
+
+              {/* Mobile Menu Button */}
+              <button 
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-xl text-gray-600 hover:text-primary hover:bg-gray-50 focus:outline-none"
+                aria-label="Toggle Menu"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-b border-gray-100 px-4 pt-2 pb-6 space-y-3 animate-fade-in shadow-xl">
+            <Link 
+              to="/#features" 
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-xl text-base font-medium text-gray-700 hover:bg-primary/5 hover:text-primary"
+            >
+              Features
+            </Link>
+            <Link 
+              to="/#pricing" 
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-xl text-base font-medium text-gray-700 hover:bg-primary/5 hover:text-primary"
+            >
+              Pricing
+            </Link>
+            <Link 
+              to="/about" 
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-xl text-base font-medium text-gray-700 hover:bg-primary/5 hover:text-primary"
+            >
+              About
+            </Link>
+            <Link 
+              to="/contact" 
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-xl text-base font-medium text-gray-700 hover:bg-primary/5 hover:text-primary"
+            >
+              Contact
+            </Link>
+            <div className="pt-2 border-t border-gray-100">
+              <Link 
+                to="/login" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-center w-full py-3 mt-2 bg-gray-50 text-brand-dark font-bold rounded-xl hover:bg-gray-100"
+              >
+                Log In
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Main Content */}
