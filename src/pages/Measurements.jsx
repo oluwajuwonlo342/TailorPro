@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { Search, Ruler, Plus, ArrowLeft, CheckCircle2, AlertCircle, Share2, Users } from 'lucide-react';
+import { Search, Ruler, Plus, ArrowLeft, CheckCircle2, AlertCircle, Share2, Users, MessageCircle } from 'lucide-react';
 
 export default function MeasurementsPage() {
   const [customers, setCustomers] = useState([]);
@@ -13,7 +13,7 @@ export default function MeasurementsPage() {
     const fetchCustomers = async () => {
       try {
         const response = await api.get('/customers');
-        setCustomers(response.data.data);
+        setCustomers(response.data.data || response.data);
       } catch (err) {
         console.error("Failed to fetch customers for measurements", err);
       } finally {
@@ -34,8 +34,12 @@ export default function MeasurementsPage() {
       customer.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.phone?.includes(searchTerm);
     
-    const measurementsObj = customer.measurements || {};
-    const hasData = Object.keys(measurementsObj).length > 0 || customer.hasMeasurements === true || true;
+    // Fixed logic: Removed the accidental '|| true' that was bypassing the filter
+    const measurementsData = customer.measurements;
+    const hasData = 
+      (Array.isArray(measurementsData) && measurementsData.length > 0) || 
+      (measurementsData && typeof measurementsData === 'object' && Object.keys(measurementsData).length > 0) || 
+      customer.hasMeasurements === true;
 
     if (statusFilter === 'Measured') return matchesSearch && hasData;
     if (statusFilter === 'Missing') return matchesSearch && !hasData;
@@ -45,17 +49,20 @@ export default function MeasurementsPage() {
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center px-4">
-        <div className="text-primary font-semibold text-base sm:text-lg animate-pulse text-center">Loading measurement directory...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-gray-500 font-bold text-sm">Loading measurement directory...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 font-sans max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+    <div className="space-y-6 sm:space-y-8 font-sans max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
       
       {/* Back to Dashboard Link */}
-      <div className="pt-4">
-        <Link to="/dashboard" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-primary transition-colors">
+      <div className="pt-2 sm:pt-4">
+        <Link to="/dashboard" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-primary transition-colors">
           <ArrowLeft className="w-4 h-4 mr-2 shrink-0" /> Back to Dashboard
         </Link>
       </div>
@@ -63,8 +70,8 @@ export default function MeasurementsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm">
         <div>
-          <h1 className="text-xl sm:text-3xl font-extrabold text-brand-dark">Measurement Directory</h1>
-          <p className="text-gray-500 text-xs sm:text-sm mt-1">Audit client sizing profiles and request digital measurements.</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-dark">Measurement Directory</h1>
+          <p className="text-gray-500 text-sm mt-1 font-medium">Audit client sizing profiles and request digital measurements.</p>
         </div>
         <Link 
           to="/customers/add" 
@@ -83,16 +90,16 @@ export default function MeasurementsPage() {
             placeholder="Search by client name or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-primary transition-all"
+            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm"
           />
         </div>
 
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+        <div className="flex items-center space-x-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
           {['All', 'Measured', 'Missing'].map(status => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
                 statusFilter === status 
                   ? 'bg-brand-dark text-white shadow-md' 
                   : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
@@ -107,68 +114,76 @@ export default function MeasurementsPage() {
       {/* Directory Grid */}
       {filteredCustomers.length === 0 ? (
         <div className="text-center py-16 sm:py-20 bg-white rounded-3xl border border-gray-100 shadow-sm px-4">
-          <Ruler className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg sm:text-xl font-bold text-brand-dark mb-2">No Clients Found</h3>
-          <p className="text-gray-500 text-xs sm:text-sm max-w-sm mx-auto">Try adjusting your search or filter criteria.</p>
+          <div className="w-20 h-20 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-5 border border-gray-100">
+            <Ruler className="w-10 h-10" />
+          </div>
+          <h3 className="text-xl font-extrabold text-brand-dark mb-2">No Clients Found</h3>
+          <p className="text-gray-500 text-sm max-w-sm mx-auto font-medium">Try adjusting your search or filter criteria to find the client you are looking for.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {filteredCustomers.map(customer => {
-            const measurementsObj = customer.measurements || {};
-            const hasData = Object.keys(measurementsObj).length > 0 || customer.hasMeasurements === true || true;
+            const measurementsData = customer.measurements;
+            const hasData = 
+              (Array.isArray(measurementsData) && measurementsData.length > 0) || 
+              (measurementsData && typeof measurementsData === 'object' && Object.keys(measurementsData).length > 0) || 
+              customer.hasMeasurements === true;
+              
             const subCount = customer.subProfiles?.length || 0;
+            const initial = customer.fullName ? customer.fullName.charAt(0).toUpperCase() : 'C';
 
             return (
-              <div key={customer._id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6 flex flex-col justify-between hover:shadow-md transition-all">
+              <div key={customer._id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between hover:shadow-md transition-shadow group">
                 
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-3.5 sm:space-x-4 min-w-0">
-                    <div className="w-12 h-12 bg-primary/10 text-primary font-bold rounded-2xl flex items-center justify-center text-lg shrink-0">
-                      {customer.fullName?.charAt(0).toUpperCase()}
+                <div className="flex items-start justify-between mb-5">
+                  <div className="flex items-center space-x-4 min-w-0">
+                    <div className="w-14 h-14 bg-primary/10 text-primary font-black rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-inner">
+                      {initial}
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-extrabold text-brand-dark text-base sm:text-lg truncate">{customer.fullName}</h3>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">{customer.gender || 'Client'} • {customer.phone}</p>
+                      <h3 className="font-extrabold text-brand-dark text-lg truncate mb-0.5">{customer.fullName}</h3>
+                      <p className="text-xs font-semibold text-gray-500 truncate">{customer.gender || 'Client'} • {customer.phone}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-3 my-3 sm:my-4">
+                <div className="space-y-3 mb-6">
                   {/* Status Indicator */}
-                  <div className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50">
-                    <span className="text-xs font-bold text-gray-500">Primary Profile</span>
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl border border-gray-100 bg-gray-50/80">
+                    <span className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Primary Profile</span>
                     {hasData ? (
-                      <span className="inline-flex items-center text-xs font-bold text-emerald-600">
-                        <CheckCircle2 className="w-4 h-4 mr-1 shrink-0" /> Measured
+                      <span className="inline-flex items-center text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1 shrink-0" /> Measured
                       </span>
                     ) : (
-                      <span className="inline-flex items-center text-xs font-bold text-status-danger">
-                        <AlertCircle className="w-4 h-4 mr-1 shrink-0" /> Missing Data
+                      <span className="inline-flex items-center text-xs font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">
+                        <AlertCircle className="w-3.5 h-3.5 mr-1 shrink-0" /> Missing Data
                       </span>
                     )}
                   </div>
 
                   {subCount > 0 && (
-                    <div className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-brand-bg">
-                      <span className="text-xs font-bold text-gray-500 flex items-center">
-                        <Users className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Family Members
+                    <div className="flex items-center justify-between p-3.5 rounded-2xl border border-blue-100 bg-blue-50/50">
+                      <span className="text-[11px] font-black text-blue-700 uppercase tracking-wider flex items-center">
+                        <Users className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Sub-Profiles
                       </span>
-                      <span className="text-xs font-extrabold text-brand-dark">{subCount} Profiles</span>
+                      <span className="text-xs font-extrabold text-blue-800">{subCount} Member{subCount > 1 ? 's' : ''}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+                <div className="pt-5 border-t border-gray-100 flex items-center justify-between gap-3">
                   <button 
                     onClick={() => handleShareWhatsApp(customer)}
-                    className="py-2.5 px-4 bg-emerald-50 text-emerald-700 font-bold text-xs rounded-xl hover:bg-emerald-100 transition-colors flex items-center justify-center border border-emerald-100"
+                    title="Send Secure Measurement Link via WhatsApp"
+                    className="flex-1 py-3 px-3 bg-white text-emerald-600 font-bold text-xs rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-center border border-emerald-200 shadow-sm group-hover:border-emerald-300"
                   >
-                    <Share2 className="w-4 h-4 mr-1.5 shrink-0" /> Request Info
+                    <MessageCircle className="w-4 h-4 mr-1.5 shrink-0" /> Request
                   </button>
                   
                   <Link 
                     to={`/customers/${customer._id}`}
-                    className="py-2.5 px-4 bg-primary/10 text-primary font-bold text-xs rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center"
+                    className="flex-1 py-3 px-3 bg-brand-dark text-white font-bold text-xs rounded-xl hover:bg-black transition-all flex items-center justify-center shadow-md shadow-brand-dark/10"
                   >
                     <Ruler className="w-4 h-4 mr-1.5 shrink-0" /> View Sizing
                   </Link>
