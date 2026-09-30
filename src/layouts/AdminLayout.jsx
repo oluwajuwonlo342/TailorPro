@@ -1,11 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Activity, Users, CreditCard, Settings, ShieldCheck, LogOut, Menu, X, Shield, Mail } from 'lucide-react';
+import api from '../services/api';
 
 export default function AdminLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [adminName, setAdminName] = useState('SUPER ADMIN');
+
+  useEffect(() => {
+    // 1. Try to load initial name from localStorage if cached
+    const cachedUser = localStorage.getItem('adminName');
+    if (cachedUser) {
+      setAdminName(cachedUser);
+    }
+
+    // 2. Fetch fresh admin profile info from backend
+    const fetchAdminProfile = async () => {
+      try {
+        const response = await api.get('/admin/profile'); // Adjust to match your admin profile/settings endpoint if needed
+        if (response.data && response.data.fullName) {
+          setAdminName(response.data.fullName);
+          localStorage.setItem('adminName', response.data.fullName);
+        }
+      } catch (err) {
+        console.error("Failed to fetch admin profile", err);
+      }
+    };
+
+    fetchAdminProfile();
+  }, [location.pathname]); // Re-fetch when navigating (e.g. after saving settings)
 
   const navLinks = [
     { name: 'Platform Overview', path: '/admin', icon: Activity },
@@ -18,6 +43,7 @@ export default function AdminLayout({ children }) {
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to log out of the admin panel?')) {
       localStorage.removeItem('token');
+      localStorage.removeItem('adminName');
       navigate('/admin/login');
     }
   };
@@ -48,7 +74,6 @@ export default function AdminLayout({ children }) {
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {navLinks.map((link) => {
             const Icon = link.icon;
-            // Check if current path matches link path (handles nested routes like /admin/tailors/:id)
             const isActive = link.path === '/admin' 
               ? location.pathname === '/admin' || location.pathname === '/admin/'
               : location.pathname.startsWith(link.path);
@@ -97,14 +122,17 @@ export default function AdminLayout({ children }) {
             </button>
           </div>
 
-          {/* Clickable Super Admin Profile Section */}
+          {/* Dynamic Admin Profile Section */}
           <div 
             onClick={() => navigate('/admin/settings')}
             className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-colors group"
             title="System Settings"
           >
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-black text-brand-dark leading-none group-hover:text-primary transition-colors">SUPER ADMIN</p>
+              {/* Displays dynamic fullName instead of hardcoded text */}
+              <p className="text-sm font-black text-brand-dark leading-none group-hover:text-primary transition-colors max-w-[200px] truncate">
+                {adminName}
+              </p>
               <div className="flex items-center justify-end gap-1 mt-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                 <p className="text-[10px] font-bold text-emerald-600 leading-none uppercase tracking-wider">System Live</p>
