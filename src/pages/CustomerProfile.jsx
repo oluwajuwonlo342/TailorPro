@@ -45,21 +45,65 @@ export default function CustomerProfile() {
   // Orders State
   const [customerOrders, setCustomerOrders] = useState([]);
 
+  // Helper to safely flatten nested measurement data from public link submissions
+  const normalizeData = (data) => {
+    if (!data) return {};
+    let flat = { ...data };
+    if (data.measurementsData) {
+      flat = { ...flat, ...data.measurementsData };
+    }
+    return flat;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const custRes = await api.get(`/customers/${id}`);
-        setCustomer(custRes.data.data);
-        setNotes(custRes.data.data.notes || ''); 
+        let customerData = custRes.data.data;
+        setNotes(customerData.notes || ''); 
 
         const measRes = await api.get(`/measurements/customer/${id}`);
-        if (measRes.data.data && measRes.data.data.length > 0) {
-          setMeasurementsList(measRes.data.data);
-          setMeasurements(measRes.data.data[0]); 
+        const allMeasurements = measRes.data.data || [];
+
+        // 1. Extract and flatten Main Measurements
+        const mainMeasurements = allMeasurements
+          .filter(m => !m.subProfileId && m.targetType !== 'subProfile')
+          .map(normalizeData);
+
+        if (mainMeasurements.length > 0) {
+          setMeasurementsList(mainMeasurements);
+          setMeasurements(mainMeasurements[0]); 
           setHasMeasurements(true);
         } else {
           setHasMeasurements(false);
         }
+
+        // 2. Extract stray Sub-Profile measurements (if backend accidentally mixed them in)
+        const straySubMeasurements = allMeasurements
+          .filter(m => m.subProfileId || m.targetType === 'subProfile')
+          .map(normalizeData);
+
+        // 3. Inject family measurements securely into the correct family members
+        if (customerData.subProfiles) {
+          customerData.subProfiles = customerData.subProfiles.map(sub => {
+            const straysForThisSub = straySubMeasurements.filter(m => String(m.subProfileId) === String(sub._id));
+            
+            let existingHistory = sub.measurements || [];
+            if (!Array.isArray(existingHistory)) {
+              existingHistory = typeof existingHistory === 'object' ? [existingHistory] : [];
+            }
+            existingHistory = existingHistory.map(normalizeData);
+            
+            // Combine and sort by date so the newest is always first
+            const combined = [...existingHistory, ...straysForThisSub].sort((a, b) => 
+              new Date(b.createdAt || b.recordedDate || Date.now()) - new Date(a.createdAt || a.recordedDate || Date.now())
+            );
+            
+            return { ...sub, measurements: combined };
+          });
+        }
+
+        setCustomer(customerData);
 
         // Fetch orders and filter for this customer
         const ordersRes = await api.get('/orders');
@@ -99,9 +143,9 @@ export default function CustomerProfile() {
     try {
       const { _id, createdAt, updatedAt, ...cleanMeasurements } = measurements;
       const response = await api.post(`/measurements/customer/${id}`, cleanMeasurements);
-      const updatedList = [response.data.data, ...measurementsList];
+      const updatedList = [normalizeData(response.data.data), ...measurementsList];
       setMeasurementsList(updatedList);
-      setMeasurements(response.data.data);
+      setMeasurements(updatedList[0]);
       setSelectedMeasurementIndex(0);
       setHasMeasurements(true);
       setIsEditingMeasurements(false);
@@ -152,12 +196,20 @@ export default function CustomerProfile() {
 
       const response = await api.put(`/customers/${id}/sub-profiles/${activeSubProfile._id}/measurements`, cleanMeasurements);
       const updatedCust = response.data.data;
-      setCustomer(updatedCust); 
+      
       const freshSub = updatedCust.subProfiles.find(
         (s) => String(s._id) === String(activeSubProfile._id)
       );
+      
+      // Normalize before setting
+      let freshHistory = freshSub.measurements || [];
+      if (!Array.isArray(freshHistory)) freshHistory = [freshHistory];
+      freshHistory = freshHistory.map(normalizeData);
+      freshSub.measurements = freshHistory;
+
+      setCustomer(updatedCust); 
       setActiveSubProfile(freshSub);
-      setSubMeasurements(freshSub.measurements[0]);
+      setSubMeasurements(freshHistory[0]);
       setSelectedSubIndex(0);
       alert("Sub-profile fitting saved successfully!");
     } catch (err) {
@@ -169,7 +221,7 @@ export default function CustomerProfile() {
   };
 
   const handleShareWhatsApp = (targetName, cid, sid = '') => {
-    const formUrl = `${window.location.origin}/measure-form?cid=${cid}${sid ? `&sid=${sid}` : ''}`;
+    const formUrl = `${window.location.origin}/measure-form?token=${cid}${sid ? `&sid=${sid}` : ''}`;
     const message = encodeURIComponent(`Hello ${targetName}, please click this secure link to fill in your clothing measurements for TailorPro: ${formUrl}`);
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };
@@ -203,7 +255,7 @@ export default function CustomerProfile() {
     value ? (
       <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
         <p className="text-xs font-semibold text-gray-500 mb-1">{label}</p>
-        <p className="text-base sm:text-lg font-bold text-brand-dark">{value} <span className="text-sm font-medium text-gray-400">{measurements.unit}</span></p>
+        <p className="text-base sm:text-lg font-bold text-brand-dark">{value} <span className="text-sm font-medium text-gray-400">{measurements.unit || 'inches'}</span></p>
       </div>
     ) : null
   );
@@ -334,7 +386,7 @@ export default function CustomerProfile() {
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
-                          <select name="unit" value={measurements.unit} onChange={handleMeasurementChange} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-primary">
+                          <select name="unit" value={measurements.unit || 'inches'} onChange={handleMeasurementChange} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-primary">
                             <option value="inches">Inches (in)</option>
                             <option value="cm">Centimeters (cm)</option>
                           </select>
@@ -426,8 +478,8 @@ export default function CustomerProfile() {
                       )}
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 bg-brand-bg px-4 py-3 rounded-xl">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Viewing Record: {measurements.title || 'Standard'}</span>
-                        <span className="text-xs font-semibold text-gray-400">Date: {new Date(measurements.recordedDate || measurements.createdAt).toLocaleDateString()}</span>
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Viewing Record: {measurements.title || 'Client Self-Measurement Form'}</span>
+                        <span className="text-xs font-semibold text-gray-400">Date: {new Date(measurements.recordedDate || measurements.createdAt || Date.now()).toLocaleDateString()}</span>
                       </div>
 
                       {customer.gender === 'Female' ? (
@@ -639,7 +691,7 @@ export default function CustomerProfile() {
                             >
                               {activeSubProfile.measurements.map((m, idx) => (
                                 <option key={m._id || idx} value={idx}>
-                                  {m.title || 'Record'} ({new Date(m.recordedDate || m.createdAt).toLocaleDateString()}) {idx === 0 ? '- Latest' : ''}
+                                  {m.title || 'Client Self-Measurement Form'} ({new Date(m.recordedDate || m.createdAt || Date.now()).toLocaleDateString()}) {idx === 0 ? '- Latest' : ''}
                                 </option>
                               ))}
                             </select>
