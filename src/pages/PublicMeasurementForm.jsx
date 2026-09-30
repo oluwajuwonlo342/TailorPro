@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import api from '../../services/api'; // Use your dynamic API instance instead of hardcoded localhost
+import api from '../services/api'; // Use your dynamic API instance instead of hardcoded localhost
 import { Scissors, CheckCircle2 } from 'lucide-react';
 
 export default function PublicMeasurementForm() {
