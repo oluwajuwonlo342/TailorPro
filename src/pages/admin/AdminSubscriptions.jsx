@@ -27,7 +27,7 @@ export default function AdminSubscriptions() {
 
   const handleTogglePro = async (userId, currentPlan, fullName) => {
     const actionText = currentPlan === 'pro' ? 'revoke PRO access from' : 'grant PRO access to';
-    if (!window.confirm(`Are you sure you want to ${actionText} ${fullName}?`)) return;
+    if (!window.confirm(`Are you sure you want to ${actionText} ${fullName || 'this user'}?`)) return;
 
     setTogglingId(userId);
     try {
@@ -41,9 +41,9 @@ export default function AdminSubscriptions() {
             : sub
         );
         
-        // Dynamically recalculate the top metrics
+        // Dynamically recalculate the top metrics using ₦3,500
         const totalPro = updatedSubscribers.filter(s => s.plan === 'pro').length;
-        const totalFree = updatedSubscribers.filter(s => s.plan === 'free').length;
+        const totalFree = updatedSubscribers.length - totalPro;
         const monthlyRevenue = totalPro * 3500;
 
         return {
