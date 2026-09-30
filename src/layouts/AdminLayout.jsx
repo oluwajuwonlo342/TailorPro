@@ -7,22 +7,17 @@ export default function AdminLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [adminName, setAdminName] = useState('SUPER ADMIN');
+  const [adminName, setAdminName] = useState(() => localStorage.getItem('adminName') || 'SUPER ADMIN');
 
   useEffect(() => {
-    // 1. Try to load initial name from localStorage if cached
-    const cachedUser = localStorage.getItem('adminName');
-    if (cachedUser) {
-      setAdminName(cachedUser);
-    }
-
-    // 2. Fetch fresh admin profile info from backend
+    // Fetch fresh admin profile info from the existing /auth/me route
     const fetchAdminProfile = async () => {
       try {
-        const response = await api.get('/admin/profile'); // Adjust to match your admin profile/settings endpoint if needed
-        if (response.data && response.data.fullName) {
-          setAdminName(response.data.fullName);
-          localStorage.setItem('adminName', response.data.fullName);
+        const response = await api.get('/auth/me');
+        const user = response.data.data;
+        if (user && user.fullName) {
+          setAdminName(user.fullName);
+          localStorage.setItem('adminName', user.fullName);
         }
       } catch (err) {
         console.error("Failed to fetch admin profile", err);
