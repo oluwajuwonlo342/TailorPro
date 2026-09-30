@@ -7,6 +7,7 @@ import PublicLayout from './layouts/PublicLayout';
 import AdminLayout from './layouts/AdminLayout'; // <-- Admin Layout
 
 // Pages
+
 import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
@@ -21,6 +22,7 @@ import ProfileSettings from './pages/ProfileSettings';
 import Payments from './pages/Payments';
 import Measurements from './pages/Measurements';
 import Upgrade from './pages/Upgrade';
+import OrderCreate from './pages/OrderCreate';
 
 // Admin Pages
 import AdminLogin from './pages/admin/AdminLogin';
@@ -202,7 +204,14 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-
+{/* ADD THIS ROUTE HERE */}
+<Route path="/orders/new" element={
+  <ProtectedRoute>
+    <DashboardLayout>
+      <OrderCreate />
+    </DashboardLayout>
+  </ProtectedRoute>
+} />
           {/* Catch-all redirect back to landing page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
