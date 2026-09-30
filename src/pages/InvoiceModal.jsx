@@ -1,6 +1,6 @@
-import { X, Printer, Scissors, CheckCircle2 } from 'lucide-react';
+import { X, Printer, Scissors } from 'lucide-react';
 
-export default function InvoiceModal({ order, customer, businessName, isOpen, onClose }) {
+export default function InvoiceModal({ order, customer, businessName, logoUrl, isOpen, onClose }) {
   if (!isOpen) return null;
 
   const handlePrint = () => {
@@ -8,7 +8,7 @@ export default function InvoiceModal({ order, customer, businessName, isOpen, on
   };
 
   const totalAmount = order.totalAmount || 0;
-  const depositPaid = order.depositPaid || 0;
+  const depositPaid = order.depositPaid || order.amountPaid || 0;
   const balanceDue = Math.max(0, totalAmount - depositPaid);
 
   return (
@@ -43,9 +43,18 @@ export default function InvoiceModal({ order, customer, businessName, isOpen, on
           {/* Brand & Header */}
           <div className="flex justify-between items-start border-b border-gray-100 pb-6">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center shadow-md">
-                <Scissors className="w-6 h-6" />
-              </div>
+              {/* Tailor Logo / Profile Image or Fallback Scissors Icon */}
+              {logoUrl ? (
+                <img 
+                  src={logoUrl} 
+                  alt="Business Logo" 
+                  className="w-12 h-12 rounded-2xl object-cover shadow-md border border-gray-100" 
+                />
+              ) : (
+                <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center shadow-md">
+                  <Scissors className="w-6 h-6" />
+                </div>
+              )}
               <div>
                 <h1 className="text-xl font-extrabold text-brand-dark">{businessName || 'TailorPro Fashion House'}</h1>
                 <p className="text-xs text-gray-500 font-medium">Bespoke Tailoring & Garment Construction</p>
@@ -69,12 +78,12 @@ export default function InvoiceModal({ order, customer, businessName, isOpen, on
             </div>
             <div className="text-right">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Order Details:</p>
-              <p className="text-xs font-bold text-brand-dark">Style: {order.styleName || order.outfitType || 'Custom Outfit'}</p>
+              <p className="text-xs font-bold text-brand-dark">Style: {order.outfitName || order.outfitType || 'Custom Outfit'}</p>
               {order.fittingDate && (
                 <p className="text-xs text-gray-600 mt-1">Fitting Date: {new Date(order.fittingDate).toLocaleDateString()}</p>
               )}
-              {order.deliveryDate && (
-                <p className="text-xs text-gray-600 mt-1">Delivery: {new Date(order.deliveryDate).toLocaleDateString()}</p>
+              {order.dueDate && (
+                <p className="text-xs text-gray-600 mt-1">Due Date: {new Date(order.dueDate).toLocaleDateString()}</p>
               )}
             </div>
           </div>
@@ -91,8 +100,8 @@ export default function InvoiceModal({ order, customer, businessName, isOpen, on
             <tbody className="divide-y divide-gray-100 text-sm">
               <tr>
                 <td className="py-4 font-bold text-brand-dark">
-                  {order.styleName || order.description || 'Bespoke Garment Tailoring'}
-                  {order.notes && <p className="text-xs text-gray-500 font-normal mt-0.5">{order.notes}</p>}
+                  {order.outfitName || order.description || 'Bespoke Garment Tailoring'}
+                  {order.fabricDescription && <p className="text-xs text-gray-500 font-normal mt-0.5">Fabric: {order.fabricDescription}</p>}
                 </td>
                 <td className="py-4 text-center text-gray-600 font-medium">1</td>
                 <td className="py-4 text-right font-bold text-brand-dark">₦{totalAmount.toLocaleString()}</td>
@@ -108,7 +117,7 @@ export default function InvoiceModal({ order, customer, businessName, isOpen, on
                 <span className="font-bold">₦{totalAmount.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm text-emerald-600 font-medium">
-                <span>Deposit Paid:</span>
+                <span>Amount Paid:</span>
                 <span>- ₦{depositPaid.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-base font-black text-brand-dark border-t border-gray-200 pt-3">
