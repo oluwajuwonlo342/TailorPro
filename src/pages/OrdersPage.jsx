@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';// OrdersPage.jsx, at src/pages/OrdersPage.jsx
-import InvoiceModal from "./InvoiceModal";
+import { useAuth } from '../context/AuthContext';
+import InvoiceModal from './InvoiceModal';
+
 import { ShoppingBag, Plus, Search, Calendar, DollarSign, CheckCircle2, Clock, Trash2, Share2, Filter, AlertCircle, CreditCard, X, Printer, Scissors } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -209,13 +210,16 @@ export default function OrdersPage() {
                       {order.status}
                     </span>
                     <div className="flex items-center space-x-1">
-                      <button 
-                        onClick={() => setInvoiceOrder(order)}
-                        title="View Invoice & Receipt"
-                        className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors"
-                      >
-                        <Printer className="w-4 h-4" />
-                      </button>
+                      {/* Invoice button only renders when status is Delivered */}
+                      {order.status === 'Delivered' && (
+                        <button 
+                          onClick={() => setInvoiceOrder(order)}
+                          title="Generate Invoice & Receipt"
+                          className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors flex items-center gap-1 text-xs font-bold bg-primary/5 px-2.5"
+                        >
+                          <Printer className="w-4 h-4" /> Invoice
+                        </button>
+                      )}
                       <button 
                         onClick={() => handleSendWhatsAppUpdate(order)}
                         title="Send WhatsApp Update"
