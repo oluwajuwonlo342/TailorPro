@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import InvoiceModal from '../InvoiceModal';
 
-import { ShoppingBag, Plus, Search, Calendar, DollarSign, CheckCircle2, Clock, Trash2, Share2, Filter, AlertCircle, CreditCard, X } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Calendar, DollarSign, CheckCircle2, Clock, Trash2, Share2, Filter, AlertCircle, CreditCard, X, Printer, Scissors } from 'lucide-react';
 
 export default function OrdersPage() {
   const { user } = useAuth();
@@ -18,6 +19,9 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [additionalPayment, setAdditionalPayment] = useState('');
   const [isPaying, setIsPaying] = useState(false);
+
+  // Invoice Modal State
+  const [invoiceOrder, setInvoiceOrder] = useState(null);
 
   const fetchOrders = async () => {
     try {
@@ -102,7 +106,6 @@ export default function OrdersPage() {
       ? "All payments have been settled. Thank you!" 
       : `Outstanding balance remaining: ₦${balance.toLocaleString()}.`;
 
-    // Dynamically fetching the brand name from user DB
     const brandName = user?.brandName || user?.businessName || user?.name || "TailorPro"; 
 
     const message = encodeURIComponent(`Hello ${customerName}, here is an update on your order (${order.outfitName}) from *${brandName}*. Current Status: *${order.status}*. ${paymentStatusText} Thank you for choosing us!`);
@@ -127,6 +130,8 @@ export default function OrdersPage() {
       </div>
     );
   }
+
+  const businessName = user?.brandName || user?.businessName || localStorage.getItem('businessName') || 'TailorPro Fashion House';
 
   return (
     <div className="space-y-8 font-sans max-w-7xl mx-auto pb-20">
@@ -206,6 +211,13 @@ export default function OrdersPage() {
                     </span>
                     <div className="flex items-center space-x-1">
                       <button 
+                        onClick={() => setInvoiceOrder(order)}
+                        title="View Invoice & Receipt"
+                        className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-colors"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
+                      <button 
                         onClick={() => handleSendWhatsAppUpdate(order)}
                         title="Send WhatsApp Update"
                         className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
@@ -281,6 +293,7 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* Payment Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl relative">
@@ -313,6 +326,17 @@ export default function OrdersPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Professional PDF Invoice Modal */}
+      {invoiceOrder && (
+        <InvoiceModal 
+          isOpen={!!invoiceOrder}
+          order={invoiceOrder}
+          customer={invoiceOrder.customer}
+          businessName={businessName}
+          onClose={() => setInvoiceOrder(null)}
+        />
       )}
 
     </div>
