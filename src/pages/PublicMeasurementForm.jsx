@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Scissors, CheckCircle2, Ruler } from 'lucide-react';
+import { Scissors, CheckCircle2 } from 'lucide-react';
 
 export default function PublicMeasurementForm() {
   const [searchParams] = useSearchParams();
-  const customerId = searchParams.get('cid');
-  const subProfileId = searchParams.get('sid');
+  
+  // Grab the tokens from the URL (e.g. ?token=12345&sid=67890)
+  const customerToken = searchParams.get('token'); 
+  const subProfileId = searchParams.get('sid'); 
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -18,19 +20,48 @@ export default function PublicMeasurementForm() {
   const [measurements, setMeasurements] = useState({});
 
   useEffect(() => {
-    // Fetch customer/sub-profile info publicly
+    // 1. Validate that a token exists in the URL
+    if (!customerToken) {
+      setError('Invalid or missing measurement link.');
+      setLoading(false);
+      return;
+    }
+
     const fetchTargetDetails = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/customers/public-info?cid=${customerId}&sid=${subProfileId || ''}`);
-        setTargetInfo(res.data.data);
+        // 2. Point exactly to the new verified route we built: /api/measurements/public/:token
+        const res = await axios.get(`http://localhost:5000/api/measurements/public/${customerToken}`);
+        
+        const customerData = res.data.customer;
+        
+        // Handle if this form is for a sub-profile or the main customer
+        if (subProfileId && customerData.subProfiles) {
+          const subProfile = customerData.subProfiles.find(sp => sp._id === subProfileId);
+          if (subProfile) {
+            setTargetInfo({
+              name: subProfile.name,
+              gender: subProfile.gender || customerData.gender,
+              relationship: subProfile.relationship
+            });
+          } else {
+            setError('Sub-profile not found.');
+          }
+        } else {
+          setTargetInfo({
+            name: customerData.fullName,
+            gender: customerData.gender,
+            relationship: 'Self'
+          });
+        }
       } catch (err) {
         setError('Invalid or expired measurement link.');
       } finally {
         setLoading(false);
       }
     };
-    if (customerId) fetchTargetDetails();
-  }, [customerId, subProfileId]);
+
+    fetchTargetDetails();
+  }, [customerToken, subProfileId]);
 
   const handleChange = (e) => {
     setMeasurements({ ...measurements, [e.target.name]: e.target.value });
@@ -42,9 +73,9 @@ export default function PublicMeasurementForm() {
     setError('');
 
     try {
-      await axios.post('http://localhost:5000/api/measurements/public-submit', {
-        customerId,
-        subProfileId,
+      // 3. Post directly to the new submit route we built: /api/measurements/public/:token
+      await axios.post(`http://localhost:5000/api/measurements/public/${customerToken}`, {
+        subProfileId, // Pass this so the backend knows if it's for a dependent
         targetType: subProfileId ? 'subProfile' : 'main',
         measurementsData: measurements,
         unit,
@@ -52,7 +83,7 @@ export default function PublicMeasurementForm() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError('Failed to submit measurements. Please try again.');
+      setError(err.response?.data?.error || 'Failed to submit measurements. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -74,6 +105,17 @@ export default function PublicMeasurementForm() {
     );
   }
 
+  // If there's an error loading the page, just show the error without the form
+  if (error && !targetInfo.name) {
+    return (
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center p-4 font-sans">
+        <div className="bg-white p-10 rounded-3xl shadow-xl max-w-md w-full text-center text-red-600 font-bold">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-brand-bg py-12 px-4 font-sans">
       <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
@@ -86,12 +128,12 @@ export default function PublicMeasurementForm() {
           <p className="text-gray-500 text-sm mt-1">Providing measurements for: <span className="font-bold text-primary">{targetInfo.name}</span> ({targetInfo.relationship || 'Client'})</p>
         </div>
 
-        {error && <div className="mb-6 p-4 bg-red-50 text-status-danger text-sm rounded-xl">{error}</div>}
+        {error && <div className="mb-6 p-4 bg-red-50 text-status-danger text-sm rounded-xl font-bold">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
             <span className="text-sm font-semibold text-gray-700">Measurement Unit</span>
-            <select value={unit} onChange={(e) => setUnit(e.target.value)} className="px-4 py-2 bg-white border border-gray-200 rounded-xl outline-none font-medium">
+            <select value={unit} onChange={(e) => setUnit(e.target.value)} className="px-4 py-2 bg-white border border-gray-200 rounded-xl outline-none font-medium text-sm">
               <option value="inches">Inches (in)</option>
               <option value="cm">Centimeters (cm)</option>
             </select>
@@ -105,7 +147,7 @@ export default function PublicMeasurementForm() {
                 {['shoulder', 'bust', 'underBust', 'waist', 'shoulderToNipple', 'halfLength', 'gownLength', 'armHole', 'sleeveLength', 'skirtLength', 'trouserLength'].map((field) => (
                   <div key={field}>
                     <label className="block text-xs font-semibold text-gray-500 mb-1 capitalize">{field.replace(/([A-Z])/g, ' $1')}</label>
-                    <input type="number" step="0.5" name={field} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary" placeholder="0.0" />
+                    <input type="number" step="0.5" name={field} onChange={handleChange} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-primary transition-all text-sm" placeholder="0.0" />
                   </div>
                 ))}
               </div>
@@ -117,15 +159,15 @@ export default function PublicMeasurementForm() {
                 {['neck', 'shoulder', 'chest', 'waist', 'armHole', 'sleeveLength', 'bicep', 'wrist', 'topLength', 'trouserWaist', 'hips', 'thigh', 'knee', 'trouserLength', 'inseam'].map((field) => (
                   <div key={field}>
                     <label className="block text-xs font-semibold text-gray-500 mb-1 capitalize">{field.replace(/([A-Z])/g, ' $1')}</label>
-                    <input type="number" step="0.5" name={field} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary" placeholder="0.0" />
+                    <input type="number" step="0.5" name={field} onChange={handleChange} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-primary transition-all text-sm" placeholder="0.0" />
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <button type="submit" disabled={submitting} className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/30">
-            {submitting ? 'Submitting...' : 'Submit Measurements'}
+          <button type="submit" disabled={submitting} className="w-full py-4 bg-brand-dark text-white font-bold rounded-2xl hover:bg-black transition-all shadow-lg shadow-black/10 disabled:opacity-50 mt-6">
+            {submitting ? 'Submitting...' : 'Submit Measurements Securely'}
           </button>
         </form>
 
