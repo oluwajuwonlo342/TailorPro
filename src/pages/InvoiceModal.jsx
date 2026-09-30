@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { X, Printer, Scissors } from 'lucide-react';
 
 export default function InvoiceModal({ order, customer, businessName, logoUrl, isOpen, onClose }) {
+  const [imageError, setImageError] = useState(false);
+
   if (!isOpen) return null;
 
   const handlePrint = () => {
@@ -44,10 +47,11 @@ export default function InvoiceModal({ order, customer, businessName, logoUrl, i
           <div className="flex justify-between items-start border-b border-gray-100 pb-6">
             <div className="flex items-center space-x-3">
               {/* Tailor Logo / Profile Image or Fallback Scissors Icon */}
-              {logoUrl ? (
+              {logoUrl && !imageError ? (
                 <img 
                   src={logoUrl} 
                   alt="Business Logo" 
+                  onError={() => setImageError(true)} // Falls back to scissors if Cloudinary fails
                   className="w-12 h-12 rounded-2xl object-cover shadow-md border border-gray-100" 
                 />
               ) : (
