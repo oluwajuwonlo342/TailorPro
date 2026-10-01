@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ShieldCheck, Zap, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, Zap, ArrowLeft, Lock } from 'lucide-react';
 import api from '../services/api';
 
 export default function Upgrade() {
@@ -46,75 +46,91 @@ export default function Upgrade() {
       handler.openIframe();
     } catch (err) {
       console.error('Payment initialization error', err);
-      setError(err.response?.data?.error || 'Failed to start payment process.');
+      setError(err.response?.data?.error || 'Failed to start payment process. Please try again.');
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans flex flex-col justify-center items-center">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-3xl shadow-xl border border-gray-100 relative">
+    <div className="min-h-screen bg-brand-bg py-12 px-4 sm:px-6 lg:px-8 font-sans flex flex-col justify-center items-center relative overflow-hidden">
+      
+      {/* Decorative Background Accents */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+
+      <div className="max-w-md w-full space-y-6 bg-white p-8 sm:p-10 rounded-[2rem] shadow-2xl border border-gray-100 relative z-10">
         
         {/* Back Button */}
         <button 
           onClick={() => navigate('/dashboard')}
-          className="absolute top-6 left-6 text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1 text-xs font-bold"
+          className="absolute top-6 left-6 text-gray-400 hover:text-brand-dark transition-colors flex items-center gap-1.5 text-xs font-bold"
         >
           <ArrowLeft className="w-4 h-4" /> Dashboard
         </button>
 
-        <div className="text-center pt-4">
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-primary">
-            <Zap className="w-8 h-8" />
+        <div className="text-center pt-6">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary-dark rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-primary/30">
+            <Zap className="w-8 h-8 text-white fill-white" />
           </div>
-          <h2 className="text-3xl font-black text-brand-dark">Upgrade to PRO</h2>
-          <p className="text-sm text-gray-500 mt-1">Unlock unlimited measurements, customer records, and order tracking.</p>
+          <h2 className="text-3xl font-black text-brand-dark tracking-tight">Upgrade to PRO</h2>
+          <p className="text-sm text-gray-500 mt-2 font-medium leading-relaxed">
+            Unlock unlimited measurements, customer CRM, and advanced order tracking.
+          </p>
         </div>
 
         {error && (
-          <div className="p-4 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">
+          <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-bold border border-red-100 text-center animate-fade-in">
             {error}
           </div>
         )}
 
         {/* Pricing Box */}
-        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 text-center space-y-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Monthly Subscription</p>
-          <div className="text-4xl font-black text-brand-dark">₦3,500 <span className="text-sm font-medium text-gray-500">/ month</span></div>
-          <p className="text-xs text-emerald-600 font-bold bg-emerald-50 py-1 px-3 rounded-full inline-block mt-1">Billed monthly. Cancel anytime.</p>
+        <div className="bg-gray-50/80 p-6 rounded-3xl border border-gray-100 text-center space-y-2 relative overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary via-purple-500 to-primary"></div>
+          <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-2">Monthly Subscription</p>
+          <div className="text-4xl font-black text-brand-dark">₦3,500 <span className="text-sm font-bold text-gray-400">/ mo</span></div>
+          <p className="text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 py-1.5 px-4 rounded-full inline-block mt-2 tracking-wide">
+            Billed monthly. Cancel anytime.
+          </p>
         </div>
 
         {/* Features List */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
-            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> Unlimited Customer Records
-          </div>
-          <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
-            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> Advanced Measurement Profiles
-          </div>
-          <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
-            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> Automated Order & Fitting Tracking
-          </div>
-          <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
-            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> Priority Support & Data Backup
-          </div>
+        <div className="space-y-4 py-4 px-2">
+          {[
+            'Unlimited Customer Records',
+            'Advanced Measurement Profiles',
+            'Automated Order & Fitting Tracking',
+            'Priority Support & Data Backup'
+          ].map((feature, idx) => (
+            <div key={idx} className="flex items-center gap-3.5 text-sm font-bold text-gray-700">
+              <CheckCircle2 className="w-5 h-5 text-primary shrink-0" /> {feature}
+            </div>
+          ))}
         </div>
 
         {/* Action Button */}
-        <div>
+        <div className="pt-2">
           <button
             onClick={handlePaystackPayment}
             disabled={loading}
-            className="w-full py-4 px-6 bg-brand-dark hover:bg-black text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-4 sm:py-5 px-6 bg-brand-dark hover:bg-black text-white font-black rounded-2xl shadow-xl shadow-brand-dark/20 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group"
           >
-            <ShieldCheck className="w-5 h-5 text-primary" />
-            {loading ? 'Processing Payment...' : 'Pay ₦3,500 Securely'}
+            {loading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0"></div>
+                Initializing Gateway...
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-5 h-5 text-primary group-hover:scale-110 transition-transform shrink-0" />
+                Pay ₦3,500 Securely
+              </>
+            )}
           </button>
         </div>
 
-        <p className="text-center text-[10px] text-gray-400 uppercase tracking-widest">
-          Secured by Paystack • Instant Activation
-        </p>
+        <div className="flex items-center justify-center gap-1.5 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-2">
+          <Lock className="w-3 h-3" /> Secured by Paystack
+        </div>
       </div>
     </div>
   );
