@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
-import { User, Phone, Mail, MapPin, ArrowLeft, Ruler, ShoppingBag, FileText, CheckCircle2, Edit3, Quote, Save, X, Users, Share2, History } from 'lucide-react';
+import { User, Phone, Mail, MapPin, ArrowLeft, Ruler, ShoppingBag, FileText, CheckCircle2, Edit3, Quote, Save, X, Users, Share2, History, Plus, Trash2 } from 'lucide-react';
+
+// Helper to format legacy camelCase keys (e.g., 'shoulderToNipple' -> 'Shoulder To Nipple')
+const formatLabel = (key) => {
+  const result = key.replace(/([A-Z])/g, " $1");
+  return result.charAt(0).toUpperCase() + result.slice(1);
+};
+
+// Keys to ignore when displaying dynamic measurement data
+const ignoreKeys = ['_id', 'title', 'unit', 'recordedDate', 'createdAt', 'updatedAt', '__v', 'subProfileId', 'targetType', 'measurementsData'];
 
 export default function CustomerProfile() {
   const { id } = useParams();
@@ -21,25 +30,29 @@ export default function CustomerProfile() {
   // Measurements History State
   const [measurementsList, setMeasurementsList] = useState([]);
   const [selectedMeasurementIndex, setSelectedMeasurementIndex] = useState(0);
-  const [measurements, setMeasurements] = useState({
-    title: 'Standard Fitting', unit: 'inches'
-  });
+  const [measurements, setMeasurements] = useState({ title: '', unit: 'inches' });
   const [hasMeasurements, setHasMeasurements] = useState(false);
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false);
   const [isSavingMeasurements, setIsSavingMeasurements] = useState(false);
   const [measurementsSaved, setMeasurementsSaved] = useState(false);
+  
+  // Dynamic Fields State for New Measurements
+  const [activeFields, setActiveFields] = useState([{ part: '', value: '' }]);
 
   // Sub-Profiles State
   const [showSubModal, setShowSubModal] = useState(false);
   const [subFormData, setSubFormData] = useState({ name: '', relationship: 'Son', gender: 'Male', notes: '' });
 
-  // Sub-Profile Measurements History State
+  // Sub-Profile Measurements State
   const [showSubMeasurementModal, setShowSubMeasurementModal] = useState(false);
   const [activeSubProfile, setActiveSubProfile] = useState(null);
-  const [subMeasurements, setSubMeasurements] = useState({ title: 'Standard Fitting', unit: 'inches' });
+  const [subMeasurements, setSubMeasurements] = useState({ title: '', unit: 'inches' });
   const [selectedSubIndex, setSelectedSubIndex] = useState(0);
   const [isSavingSubMeasurements, setIsSavingSubMeasurements] = useState(false);
   const [isEditingSubMeasurements, setIsEditingSubMeasurements] = useState(false);
+  
+  // Dynamic Fields State for Sub-Profiles
+  const [activeSubFields, setActiveSubFields] = useState([{ part: '', value: '' }]);
 
   const normalizeData = (data) => {
     if (!data) return {};
@@ -111,6 +124,24 @@ export default function CustomerProfile() {
     fetchData();
   }, [id]);
 
+  // Dynamic Field Handlers (Main Profile)
+  const handleDynamicFieldChange = (index, key, val) => {
+    const updated = [...activeFields];
+    updated[index][key] = val;
+    setActiveFields(updated);
+  };
+  const addDynamicField = () => setActiveFields([...activeFields, { part: '', value: '' }]);
+  const removeDynamicField = (index) => setActiveFields(activeFields.filter((_, i) => i !== index));
+
+  // Dynamic Field Handlers (Sub Profile)
+  const handleSubFieldChange = (index, key, val) => {
+    const updated = [...activeSubFields];
+    updated[index][key] = val;
+    setActiveSubFields(updated);
+  };
+  const addSubField = () => setActiveSubFields([...activeSubFields, { part: '', value: '' }]);
+  const removeSubField = (index) => setActiveSubFields(activeSubFields.filter((_, i) => i !== index));
+
   const handleSaveNotes = async () => {
     setIsSavingNotes(true);
     setNotesSaved(false);
@@ -128,20 +159,28 @@ export default function CustomerProfile() {
   };
 
   const handleSaveMeasurements = async () => {
-    const { title, unit, _id, createdAt, updatedAt, ...values } = measurements;
-    const hasAtLeastOneValue = Object.values(values).some(
-      (v) => v !== undefined && v !== null && v !== ''
-    );
-    if (!hasAtLeastOneValue) {
-      alert('Please fill in at least one measurement before saving.');
+    const payload = { 
+      title: measurements.title || 'Custom Style', 
+      unit: measurements.unit || 'inches' 
+    };
+    
+    let hasData = false;
+    activeFields.forEach(f => {
+      if (f.part.trim() !== '' && f.value !== '') {
+        payload[f.part.trim()] = f.value;
+        hasData = true;
+      }
+    });
+
+    if (!hasData) {
+      alert('Please fill in at least one measurement part and value before saving.');
       return;
     }
 
     setIsSavingMeasurements(true);
     setMeasurementsSaved(false);
     try {
-      const { _id, createdAt, updatedAt, ...cleanMeasurements } = measurements;
-      const response = await api.post(`/measurements/customer/${id}`, cleanMeasurements);
+      const response = await api.post(`/measurements/customer/${id}`, payload);
       const updatedList = [normalizeData(response.data.data), ...measurementsList];
       setMeasurementsList(updatedList);
       setMeasurements(updatedList[0]);
@@ -155,10 +194,6 @@ export default function CustomerProfile() {
     } finally {
       setIsSavingMeasurements(false);
     }
-  };
-
-  const handleMeasurementChange = (e) => {
-    setMeasurements({ ...measurements, [e.target.name]: e.target.value });
   };
 
   const handleAddSubProfile = async (e) => {
@@ -181,7 +216,8 @@ export default function CustomerProfile() {
       setSelectedSubIndex(0);
       setIsEditingSubMeasurements(false);
     } else {
-      setSubMeasurements({ title: 'Initial Fitting', unit: 'inches' });
+      setSubMeasurements({ title: '', unit: 'inches' });
+      setActiveSubFields([{ part: '', value: '' }]);
       setSelectedSubIndex(0);
       setIsEditingSubMeasurements(true);
     }
@@ -191,20 +227,27 @@ export default function CustomerProfile() {
   const handleSaveSubMeasurements = async (e) => {
     e.preventDefault();
 
-    const { title, unit, _id, createdAt, updatedAt, ...values } = subMeasurements;
-    const hasAtLeastOneValue = Object.values(values).some(
-      (v) => v !== undefined && v !== null && v !== ''
-    );
-    if (!hasAtLeastOneValue) {
-      alert('Please fill in at least one measurement before saving.');
+    const payload = { 
+      title: subMeasurements.title || 'Custom Style', 
+      unit: subMeasurements.unit || 'inches' 
+    };
+    
+    let hasData = false;
+    activeSubFields.forEach(f => {
+      if (f.part.trim() !== '' && f.value !== '') {
+        payload[f.part.trim()] = f.value;
+        hasData = true;
+      }
+    });
+
+    if (!hasData) {
+      alert('Please fill in at least one measurement part and value before saving.');
       return;
     }
 
     setIsSavingSubMeasurements(true);
     try {
-      const { _id, createdAt, updatedAt, ...cleanMeasurements } = subMeasurements;
-
-      const response = await api.put(`/customers/${id}/sub-profiles/${activeSubProfile._id}/measurements`, cleanMeasurements);
+      const response = await api.put(`/customers/${id}/sub-profiles/${activeSubProfile._id}/measurements`, payload);
       const updatedCust = response.data.data;
 
       const freshSub = updatedCust.subProfiles.find(s => String(s._id) === String(activeSubProfile._id));
@@ -219,7 +262,6 @@ export default function CustomerProfile() {
       setSubMeasurements(freshHistory[0]);
       setSelectedSubIndex(0);
       setIsEditingSubMeasurements(false);
-      alert("Sub-profile fitting saved successfully!");
     } catch (err) {
       console.error("Sub measurement error:", err);
       alert(err.response?.data?.error || 'Failed to save sub-profile measurements.');
@@ -234,45 +276,35 @@ export default function CustomerProfile() {
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };
 
-  const InputGroup = ({ label, name }) => (
-    <div>
-      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{label}</label>
-      <input
-        type="number" step="0.5" name={name}
-        value={measurements[name] || ''} onChange={handleMeasurementChange}
-        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm transition-all"
-        placeholder="0.0"
-      />
-    </div>
-  );
-
-  const SubInputGroup = ({ label, name }) => (
-    <div>
-      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{label}</label>
-      <input
-        type="number" step="0.5" name={name}
-        value={subMeasurements[name] || ''}
-        onChange={(e) => setSubMeasurements({ ...subMeasurements, [e.target.name]: e.target.value })}
-        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm transition-all"
-        placeholder="0.0"
-      />
-    </div>
-  );
-
   const DisplayValue = ({ label, value, unit }) => (
     value ? (
-      <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+      <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100 flex flex-col justify-center">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 truncate" title={label}>{formatLabel(label)}</p>
         <p className="text-base sm:text-lg font-black text-brand-dark">{value} <span className="text-xs font-bold text-gray-400">{unit || 'inches'}</span></p>
       </div>
     ) : null
   );
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><div className="text-primary font-bold animate-pulse">Loading profile...</div></div>;
+  if (loading) return <div className="flex h-64 items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   if (!customer) return <div className="text-center py-20 px-4"><h2 className="text-2xl font-bold text-gray-700">Customer not found</h2><Link to="/customers" className="text-primary hover:underline mt-4 inline-block font-bold">Return to Customer List</Link></div>;
 
   return (
     <div className="space-y-6 font-sans max-w-6xl mx-auto pb-20">
+      
+      {/* Autocomplete Suggestions for Measurement Parts */}
+      <datalist id="measurement-parts">
+        <option value="Shoulder" />
+        <option value="Bust" />
+        <option value="Waist" />
+        <option value="Hips" />
+        <option value="Gown Length" />
+        <option value="Skirt Length" />
+        <option value="Trouser Length" />
+        <option value="Sleeve Length" />
+        <option value="Arm Hole" />
+        <option value="Thigh" />
+      </datalist>
+
       <Link to="/customers" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-primary transition-colors">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Customers
       </Link>
@@ -338,8 +370,12 @@ export default function CustomerProfile() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <h3 className="font-extrabold text-brand-dark text-lg">Digital Measurements</h3>
                     {!isEditingMeasurements && (
-                      <button onClick={() => setIsEditingMeasurements(true)} className="px-5 py-2.5 bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center">
-                        <Edit3 className="w-4 h-4 mr-2 shrink-0" /> {hasMeasurements ? '+ New Fitting Record' : 'Add Measurement'}
+                      <button onClick={() => {
+                        setActiveFields([{ part: '', value: '' }]);
+                        setMeasurements({ title: '', unit: 'inches' });
+                        setIsEditingMeasurements(true);
+                      }} className="px-5 py-2.5 bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center">
+                        <Plus className="w-4 h-4 mr-1 shrink-0" /> {hasMeasurements ? 'New Style Record' : 'Add Measurement'}
                       </button>
                     )}
                   </div>
@@ -348,7 +384,7 @@ export default function CustomerProfile() {
                     <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
                       <div className="flex items-center space-x-2 text-xs font-bold text-gray-700 uppercase tracking-wider">
                         <History className="w-4 h-4 text-primary shrink-0" />
-                        <span>Timeline:</span>
+                        <span>Style History:</span>
                       </div>
                       <select
                         value={selectedMeasurementIndex}
@@ -372,93 +408,78 @@ export default function CustomerProfile() {
                     <div className="text-center py-16">
                       <Ruler className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <h3 className="text-base font-bold text-brand-dark mb-1">No Measurements Logged</h3>
-                      <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">Record digital dimensions for this client to start tracking tailored orders.</p>
-                      <button onClick={() => setIsEditingMeasurements(true)} className="px-6 py-3 bg-primary text-white font-bold text-sm rounded-2xl hover:bg-primary-dark shadow-md shadow-primary/20">
-                        + Add First Measurement
+                      <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">Create a custom measurement profile for this client based on the style they want to sew.</p>
+                      <button onClick={() => {
+                        setActiveFields([{ part: '', value: '' }]);
+                        setIsEditingMeasurements(true);
+                      }} className="px-6 py-3 bg-primary text-white font-bold text-sm rounded-2xl hover:bg-primary-dark shadow-md shadow-primary/20">
+                        + Add First Style
                       </button>
                     </div>
                   ) : isEditingMeasurements ? (
-
+                    
+                    /* NEW DYNAMIC EDIT MODE */
                     <div className="space-y-6 animate-fade-in">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Fitting Title / Date Label</label>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Style Name (e.g. Gown, Agbada)</label>
                           <input
-                            type="text" name="title" value={measurements.title || 'Standard Fitting'} onChange={handleMeasurementChange}
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-primary text-sm font-medium"
+                            type="text" placeholder="Enter style name..." value={measurements.title} onChange={(e) => setMeasurements({...measurements, title: e.target.value})}
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-primary text-sm font-medium focus:bg-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Unit</label>
-                          <select name="unit" value={measurements.unit || 'inches'} onChange={handleMeasurementChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-primary text-sm font-medium">
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Measurement Unit</label>
+                          <select value={measurements.unit || 'inches'} onChange={(e) => setMeasurements({...measurements, unit: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-primary text-sm font-medium focus:bg-white">
                             <option value="inches">Inches (in)</option>
                             <option value="cm">Centimeters (cm)</option>
                           </select>
                         </div>
                       </div>
 
-                      {customer.gender === 'Female' ? (
-                        <>
-                          <div>
-                            <h4 className="text-xs font-black text-primary mb-3 uppercase tracking-wider">Female Top / Gown</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              <InputGroup label="Shoulder" name="shoulder" />
-                              <InputGroup label="Bust" name="bust" />
-                              <InputGroup label="Under Bust" name="underBust" />
-                              <InputGroup label="Waist" name="waist" />
-                              <InputGroup label="Shoulder to Nipple" name="shoulderToNipple" />
-                              <InputGroup label="Shoulder to Under Bust" name="shoulderToUnderBust" />
-                              <InputGroup label="Half Length" name="halfLength" />
-                              <InputGroup label="Gown Length" name="gownLength" />
-                              <InputGroup label="Arm Hole" name="armHole" />
-                              <InputGroup label="Sleeve Length" name="sleeveLength" />
-                              <InputGroup label="Bicep" name="bicep" />
+                      <div className="border border-gray-100 rounded-2xl p-4 sm:p-6 bg-gray-50/50">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-sm font-black text-brand-dark">Measurements Needed</h4>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {activeFields.map((field, idx) => (
+                            <div key={idx} className="flex items-center gap-3">
+                              <input 
+                                type="text" 
+                                list="measurement-parts"
+                                placeholder="Part (e.g. Bust, Waist)" 
+                                value={field.part} 
+                                onChange={(e) => handleDynamicFieldChange(idx, 'part', e.target.value)}
+                                className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary text-sm"
+                              />
+                              <input 
+                                type="number" 
+                                step="0.25"
+                                placeholder="Value" 
+                                value={field.value} 
+                                onChange={(e) => handleDynamicFieldChange(idx, 'value', e.target.value)}
+                                className="w-24 sm:w-32 px-4 py-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary text-sm"
+                              />
+                              <button 
+                                onClick={() => removeDynamicField(idx)}
+                                className="w-10 h-10 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center shrink-0 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black text-primary mb-3 uppercase tracking-wider">Bottom / Skirt / Trousers</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              <InputGroup label="Waist" name="trouserWaist" />
-                              <InputGroup label="Hips" name="hips" />
-                              <InputGroup label="Skirt Length" name="skirtLength" />
-                              <InputGroup label="Trouser Length" name="trouserLength" />
-                              <InputGroup label="Thigh" name="thigh" />
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            <h4 className="text-xs font-black text-primary mb-3 uppercase tracking-wider">Top / Shirt / Agbada</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              <InputGroup label="Neck" name="neck" />
-                              <InputGroup label="Shoulder" name="shoulder" />
-                              <InputGroup label="Chest" name="chest" />
-                              <InputGroup label="Waist (Top)" name="waist" />
-                              <InputGroup label="Arm Hole" name="armHole" />
-                              <InputGroup label="Sleeve Length" name="sleeveLength" />
-                              <InputGroup label="Bicep" name="bicep" />
-                              <InputGroup label="Wrist" name="wrist" />
-                              <InputGroup label="Top Length" name="topLength" />
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black text-primary mb-3 uppercase tracking-wider">Bottom / Trousers</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              <InputGroup label="Waist (Trouser)" name="trouserWaist" />
-                              <InputGroup label="Hips" name="hips" />
-                              <InputGroup label="Thigh" name="thigh" />
-                              <InputGroup label="Knee" name="knee" />
-                              <InputGroup label="Calf" name="calf" />
-                              <InputGroup label="Ankle/Instep" name="instep" />
-                              <InputGroup label="Trouser Length" name="trouserLength" />
-                              <InputGroup label="Inseam" name="inseam" />
-                            </div>
-                          </div>
-                        </>
-                      )}
+                          ))}
+                        </div>
 
-                      <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <button 
+                          onClick={addDynamicField} 
+                          className="mt-4 px-4 py-2.5 bg-white border border-dashed border-gray-300 text-brand-dark font-bold text-xs rounded-xl hover:border-primary hover:text-primary transition-colors flex items-center w-full justify-center"
+                        >
+                          <Plus className="w-4 h-4 mr-1" /> Add Measurement Part
+                        </button>
+                      </div>
+
+                      <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <button onClick={handleSaveMeasurements} disabled={isSavingMeasurements} className="px-6 py-3.5 bg-primary text-white font-bold text-sm rounded-2xl hover:bg-primary-dark transition-all shadow-md shadow-primary/20 flex items-center justify-center">
                           {isSavingMeasurements ? 'Saving...' : <><Save className="w-4 h-4 mr-2"/> Save Measurements</>}
                         </button>
@@ -472,6 +493,7 @@ export default function CustomerProfile() {
 
                   ) : (
 
+                    /* DYNAMIC VIEW MODE */
                     <div className="space-y-6 animate-fade-in">
                       {measurementsSaved && (
                         <div className="flex items-center text-sm font-bold text-emerald-600 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
@@ -479,71 +501,18 @@ export default function CustomerProfile() {
                         </div>
                       )}
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 bg-gray-50 px-4 py-3.5 rounded-2xl border border-gray-100">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Record: {measurements.title || 'Standard Fitting'}</span>
-                        <span className="text-xs font-semibold text-gray-400">Date: {new Date(measurements.recordedDate || measurements.createdAt || Date.now()).toLocaleDateString()}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 bg-brand-dark px-5 py-4 rounded-2xl shadow-sm">
+                        <span className="text-sm font-black text-white uppercase tracking-wider">{measurements.title || 'Custom Style'}</span>
+                        <span className="text-xs font-semibold text-gray-400">Recorded: {new Date(measurements.recordedDate || measurements.createdAt || Date.now()).toLocaleDateString()}</span>
                       </div>
 
-                      {customer.gender === 'Female' ? (
-                        <>
-                          <div>
-                            <h4 className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-100 pb-2">Female Top / Gown</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              <DisplayValue label="Shoulder" value={measurements.shoulder} unit={measurements.unit} />
-                              <DisplayValue label="Bust" value={measurements.bust} unit={measurements.unit} />
-                              <DisplayValue label="Under Bust" value={measurements.underBust} unit={measurements.unit} />
-                              <DisplayValue label="Waist" value={measurements.waist} unit={measurements.unit} />
-                              <DisplayValue label="Shoulder to Nipple" value={measurements.shoulderToNipple} unit={measurements.unit} />
-                              <DisplayValue label="Shoulder to Under Bust" value={measurements.shoulderToUnderBust} unit={measurements.unit} />
-                              <DisplayValue label="Half Length" value={measurements.halfLength} unit={measurements.unit} />
-                              <DisplayValue label="Gown Length" value={measurements.gownLength} unit={measurements.unit} />
-                              <DisplayValue label="Arm Hole" value={measurements.armHole} unit={measurements.unit} />
-                              <DisplayValue label="Sleeve" value={measurements.sleeveLength} unit={measurements.unit} />
-                              <DisplayValue label="Bicep" value={measurements.bicep} unit={measurements.unit} />
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-100 pb-2">Bottom / Skirt / Trousers</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              <DisplayValue label="Waist" value={measurements.trouserWaist} unit={measurements.unit} />
-                              <DisplayValue label="Hips" value={measurements.hips} unit={measurements.unit} />
-                              <DisplayValue label="Skirt Length" value={measurements.skirtLength} unit={measurements.unit} />
-                              <DisplayValue label="Trouser Length" value={measurements.trouserLength} unit={measurements.unit} />
-                              <DisplayValue label="Thigh" value={measurements.thigh} unit={measurements.unit} />
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            <h4 className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-100 pb-2">Top Measurements</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              <DisplayValue label="Neck" value={measurements.neck} unit={measurements.unit} />
-                              <DisplayValue label="Shoulder" value={measurements.shoulder} unit={measurements.unit} />
-                              <DisplayValue label="Chest" value={measurements.chest} unit={measurements.unit} />
-                              <DisplayValue label="Waist" value={measurements.waist} unit={measurements.unit} />
-                              <DisplayValue label="Arm Hole" value={measurements.armHole} unit={measurements.unit} />
-                              <DisplayValue label="Sleeve" value={measurements.sleeveLength} unit={measurements.unit} />
-                              <DisplayValue label="Bicep" value={measurements.bicep} unit={measurements.unit} />
-                              <DisplayValue label="Wrist" value={measurements.wrist} unit={measurements.unit} />
-                              <DisplayValue label="Top Length" value={measurements.topLength} unit={measurements.unit} />
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-100 pb-2">Bottom Measurements</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              <DisplayValue label="Waist" value={measurements.trouserWaist} unit={measurements.unit} />
-                              <DisplayValue label="Hips" value={measurements.hips} unit={measurements.unit} />
-                              <DisplayValue label="Thigh" value={measurements.thigh} unit={measurements.unit} />
-                              <DisplayValue label="Knee" value={measurements.knee} unit={measurements.unit} />
-                              <DisplayValue label="Calf" value={measurements.calf} unit={measurements.unit} />
-                              <DisplayValue label="Ankle" value={measurements.instep} unit={measurements.unit} />
-                              <DisplayValue label="Length" value={measurements.trouserLength} unit={measurements.unit} />
-                              <DisplayValue label="Inseam" value={measurements.inseam} unit={measurements.unit} />
-                            </div>
-                          </div>
-                        </>
-                      )}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                        {Object.keys(measurements)
+                          .filter(key => !ignoreKeys.includes(key))
+                          .map((key) => (
+                            <DisplayValue key={key} label={key} value={measurements[key]} unit={measurements.unit} />
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -598,9 +567,9 @@ export default function CustomerProfile() {
                     </div>
                   )}
 
-                  {/* Sub-Profile Modal */}
+                  {/* Sub-Profile Creation Modal */}
                   {showSubModal && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-brand-dark/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                       <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button onClick={() => setShowSubModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-brand-dark">
                           <X className="w-6 h-6" />
@@ -651,12 +620,12 @@ export default function CustomerProfile() {
                     </div>
                   )}
 
-                  {/* Family Measurements Modal */}
+                  {/* Sub-Profile Measurements Modal */}
                   {showSubMeasurementModal && activeSubProfile && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-brand-dark/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                       <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                        <button onClick={() => setShowSubMeasurementModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-brand-dark">
-                          <X className="w-6 h-6" />
+                        <button onClick={() => setShowSubMeasurementModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-brand-dark bg-gray-100 rounded-full p-1">
+                          <X className="w-5 h-5" />
                         </button>
 
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pr-8">
@@ -666,10 +635,11 @@ export default function CustomerProfile() {
                           </div>
                           {!isEditingSubMeasurements && (
                             <button onClick={() => {
-                              setSubMeasurements({ title: `Fitting - ${new Date().toLocaleDateString()}`, unit: 'inches' });
+                              setActiveSubFields([{ part: '', value: '' }]);
+                              setSubMeasurements({ title: '', unit: 'inches' });
                               setIsEditingSubMeasurements(true);
                             }} className="px-4 py-2.5 bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center">
-                              <Edit3 className="w-4 h-4 mr-2 shrink-0" /> Add New Fitting
+                              <Plus className="w-4 h-4 mr-1 shrink-0" /> New Style Record
                             </button>
                           )}
                         </div>
@@ -702,78 +672,62 @@ export default function CustomerProfile() {
                           <form onSubmit={handleSaveSubMeasurements} className="space-y-6 animate-fade-in">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Fitting Title / Date</label>
-                                <input type="text" name="title" value={subMeasurements.title || 'Standard Fitting'} onChange={(e) => setSubMeasurements({...subMeasurements, title: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-primary text-sm font-medium" />
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Style Name (e.g. Gown)</label>
+                                <input type="text" placeholder="Enter style name..." value={subMeasurements.title} onChange={(e) => setSubMeasurements({...subMeasurements, title: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-primary text-sm font-medium" />
                               </div>
                               <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Unit</label>
-                                <select name="unit" value={subMeasurements.unit || 'inches'} onChange={(e) => setSubMeasurements({ ...subMeasurements, unit: e.target.value })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-primary text-sm font-medium">
+                                <select value={subMeasurements.unit || 'inches'} onChange={(e) => setSubMeasurements({ ...subMeasurements, unit: e.target.value })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-primary text-sm font-medium">
                                   <option value="inches">Inches (in)</option>
                                   <option value="cm">Centimeters (cm)</option>
                                 </select>
                               </div>
                             </div>
 
-                            {activeSubProfile.gender === 'Female' ? (
-                              <>
-                                <div>
-                                  <h4 className="text-xs font-black text-primary mb-3 uppercase tracking-wider">Female Top / Gown</h4>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                                    <SubInputGroup label="Shoulder" name="shoulder" />
-                                    <SubInputGroup label="Bust" name="bust" />
-                                    <SubInputGroup label="Under Bust" name="underBust" />
-                                    <SubInputGroup label="Waist" name="waist" />
-                                    <SubInputGroup label="Shoulder to Nipple" name="shoulderToNipple" />
-                                    <SubInputGroup label="Shoulder to Under Bust" name="shoulderToUnderBust" />
-                                    <SubInputGroup label="Half Length" name="halfLength" />
-                                    <SubInputGroup label="Gown Length" name="gownLength" />
-                                    <SubInputGroup label="Arm Hole" name="armHole" />
-                                    <SubInputGroup label="Sleeve" name="sleeveLength" />
-                                    <SubInputGroup label="Bicep" name="bicep" />
+                            <div className="border border-gray-100 rounded-2xl p-4 sm:p-6 bg-gray-50/50">
+                              <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-sm font-black text-brand-dark">Measurements Needed</h4>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                {activeSubFields.map((field, idx) => (
+                                  <div key={idx} className="flex items-center gap-3">
+                                    <input 
+                                      type="text" 
+                                      list="measurement-parts"
+                                      placeholder="Part (e.g. Bust, Waist)" 
+                                      value={field.part} 
+                                      onChange={(e) => handleSubFieldChange(idx, 'part', e.target.value)}
+                                      className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary text-sm"
+                                    />
+                                    <input 
+                                      type="number" 
+                                      step="0.25"
+                                      placeholder="Value" 
+                                      value={field.value} 
+                                      onChange={(e) => handleSubFieldChange(idx, 'value', e.target.value)}
+                                      className="w-24 sm:w-32 px-4 py-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:border-primary text-sm"
+                                    />
+                                    <button 
+                                      type="button"
+                                      onClick={() => removeSubField(idx)}
+                                      className="w-10 h-10 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center shrink-0 transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
                                   </div>
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-black text-primary mb-3 uppercase tracking-wider">Bottom / Skirt / Trousers</h4>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                                    <SubInputGroup label="Waist" name="trouserWaist" />
-                                    <SubInputGroup label="Hips" name="hips" />
-                                    <SubInputGroup label="Skirt Length" name="skirtLength" />
-                                    <SubInputGroup label="Trouser Length" name="trouserLength" />
-                                    <SubInputGroup label="Thigh" name="thigh" />
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div>
-                                  <h4 className="text-xs font-black text-primary mb-3 uppercase tracking-wider">Top / Shirt / Agbada</h4>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                                    <SubInputGroup label="Neck" name="neck" />
-                                    <SubInputGroup label="Shoulder" name="shoulder" />
-                                    <SubInputGroup label="Chest" name="chest" />
-                                    <SubInputGroup label="Waist (Top)" name="waist" />
-                                    <SubInputGroup label="Arm Hole" name="armHole" />
-                                    <SubInputGroup label="Sleeve Length" name="sleeveLength" />
-                                    <SubInputGroup label="Bicep" name="bicep" />
-                                    <SubInputGroup label="Wrist" name="wrist" />
-                                    <SubInputGroup label="Top Length" name="topLength" />
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-black text-primary mb-3 uppercase tracking-wider">Bottom / Trousers</h4>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                                    <SubInputGroup label="Waist (Trouser)" name="trouserWaist" />
-                                    <SubInputGroup label="Hips" name="hips" />
-                                    <SubInputGroup label="Thigh" name="thigh" />
-                                    <SubInputGroup label="Knee" name="knee" />
-                                    <SubInputGroup label="Calf" name="calf" />
-                                    <SubInputGroup label="Ankle/Instep" name="instep" />
-                                    <SubInputGroup label="Trouser Length" name="trouserLength" />
-                                    <SubInputGroup label="Inseam" name="inseam" />
-                                  </div>
-                                </div>
-                              </>
-                            )}
+                                ))}
+                              </div>
+
+                              <button 
+                                type="button"
+                                onClick={addSubField} 
+                                className="mt-4 px-4 py-2.5 bg-white border border-dashed border-gray-300 text-brand-dark font-bold text-xs rounded-xl hover:border-primary hover:text-primary transition-colors flex items-center w-full justify-center"
+                              >
+                                <Plus className="w-4 h-4 mr-1" /> Add Measurement Part
+                              </button>
+                            </div>
+                            
                             <div className="pt-4 flex flex-col-reverse sm:flex-row gap-3 sm:items-center sm:justify-end border-t border-gray-100">
                               {(activeSubProfile.measurements && activeSubProfile.measurements.length > 0) && (
                                 <button type="button" onClick={() => {
@@ -788,70 +742,18 @@ export default function CustomerProfile() {
                           </form>
                         ) : (
                           <div className="space-y-6 animate-fade-in mt-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 bg-gray-50 px-4 py-3.5 rounded-2xl border border-gray-100">
-                              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Record: {subMeasurements.title || 'Standard Fitting'}</span>
-                              <span className="text-xs font-semibold text-gray-400">Date: {new Date(subMeasurements.recordedDate || subMeasurements.createdAt || Date.now()).toLocaleDateString()}</span>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 bg-brand-dark px-5 py-4 rounded-2xl shadow-sm">
+                              <span className="text-sm font-black text-white uppercase tracking-wider">{subMeasurements.title || 'Custom Style'}</span>
+                              <span className="text-xs font-semibold text-gray-400">Recorded: {new Date(subMeasurements.recordedDate || subMeasurements.createdAt || Date.now()).toLocaleDateString()}</span>
                             </div>
-                            {activeSubProfile.gender === 'Female' ? (
-                              <>
-                                <div>
-                                  <h4 className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-100 pb-2">Female Top / Gown</h4>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                                    <DisplayValue label="Shoulder" value={subMeasurements.shoulder} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Bust" value={subMeasurements.bust} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Under Bust" value={subMeasurements.underBust} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Waist" value={subMeasurements.waist} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Shoulder to Nipple" value={subMeasurements.shoulderToNipple} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Shoulder to Under Bust" value={subMeasurements.shoulderToUnderBust} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Half Length" value={subMeasurements.halfLength} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Gown Length" value={subMeasurements.gownLength} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Arm Hole" value={subMeasurements.armHole} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Sleeve" value={subMeasurements.sleeveLength} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Bicep" value={subMeasurements.bicep} unit={subMeasurements.unit} />
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-100 pb-2">Bottom / Skirt / Trousers</h4>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                                    <DisplayValue label="Waist" value={subMeasurements.trouserWaist} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Hips" value={subMeasurements.hips} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Skirt Length" value={subMeasurements.skirtLength} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Trouser Length" value={subMeasurements.trouserLength} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Thigh" value={subMeasurements.thigh} unit={subMeasurements.unit} />
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div>
-                                  <h4 className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-100 pb-2">Top Measurements</h4>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                                    <DisplayValue label="Neck" value={subMeasurements.neck} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Shoulder" value={subMeasurements.shoulder} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Chest" value={subMeasurements.chest} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Waist" value={subMeasurements.waist} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Arm Hole" value={subMeasurements.armHole} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Sleeve" value={subMeasurements.sleeveLength} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Bicep" value={subMeasurements.bicep} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Wrist" value={subMeasurements.wrist} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Top Length" value={subMeasurements.topLength} unit={subMeasurements.unit} />
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-100 pb-2">Bottom Measurements</h4>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                                    <DisplayValue label="Waist" value={subMeasurements.trouserWaist} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Hips" value={subMeasurements.hips} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Thigh" value={subMeasurements.thigh} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Knee" value={subMeasurements.knee} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Calf" value={subMeasurements.calf} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Ankle" value={subMeasurements.instep} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Length" value={subMeasurements.trouserLength} unit={subMeasurements.unit} />
-                                    <DisplayValue label="Inseam" value={subMeasurements.inseam} unit={subMeasurements.unit} />
-                                  </div>
-                                </div>
-                              </>
-                            )}
+                            
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                              {Object.keys(subMeasurements)
+                                .filter(key => !ignoreKeys.includes(key))
+                                .map((key) => (
+                                  <DisplayValue key={key} label={key} value={subMeasurements[key]} unit={subMeasurements.unit} />
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -865,7 +767,7 @@ export default function CustomerProfile() {
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <h3 className="font-extrabold text-brand-dark text-lg">Active & Past Orders</h3>
-                    <Link to="/orders" className="px-5 py-2.5 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primary-dark transition-all shadow-sm w-full sm:w-auto text-center">
+                    <Link to="/orders/new" className="px-5 py-2.5 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primary-dark transition-all shadow-sm w-full sm:w-auto text-center">
                       + Create New Order
                     </Link>
                   </div>
@@ -881,7 +783,7 @@ export default function CustomerProfile() {
                       {customerOrders.map(order => {
                         const balance = order.totalAmount - order.amountPaid;
                         return (
-                          <div key={order._id} className="p-5 bg-gray-50/70 rounded-2xl border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div key={order._id} className="p-5 bg-gray-50/70 rounded-2xl border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50 transition-colors">
                             <div>
                               <h4 className="font-bold text-brand-dark text-base break-words">{order.outfitName}</h4>
                               <p className="text-xs font-medium text-gray-500 mt-1">Due: <span className="font-bold text-brand-dark">{new Date(order.dueDate).toLocaleDateString()}</span></p>
