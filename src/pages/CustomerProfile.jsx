@@ -52,6 +52,8 @@ export default function CustomerProfile() {
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false);
   const [isSavingMeasurements, setIsSavingMeasurements] = useState(false);
   const [measurementsSaved, setMeasurementsSaved] = useState(false);
+  // null = creating a brand-new record; set = editing that record's _id in place
+  const [editingMeasurementId, setEditingMeasurementId] = useState(null);
   
   // Dynamic Fields State for New Measurements
   const [activeFields, setActiveFields] = useState([{ part: '', value: '' }]);
@@ -67,6 +69,8 @@ export default function CustomerProfile() {
   const [selectedSubIndex, setSelectedSubIndex] = useState(0);
   const [isSavingSubMeasurements, setIsSavingSubMeasurements] = useState(false);
   const [isEditingSubMeasurements, setIsEditingSubMeasurements] = useState(false);
+  // null = creating a brand-new sub-profile record; set = editing that record's _id in place
+  const [editingSubMeasurementId, setEditingSubMeasurementId] = useState(null);
   
   // Dynamic Fields State for Sub-Profiles
   const [activeSubFields, setActiveSubFields] = useState([{ part: '', value: '' }]);
@@ -81,6 +85,26 @@ export default function CustomerProfile() {
       flat = { ...flat, ...data.values };
     }
     return flat;
+  };
+
+  // Turns a normalized record back into [{part, value}, ...] rows so the
+  // existing dynamic-field editor can be reused for editing, not just creating.
+  const getEditableFields = (record) => {
+    if (!record) return [{ part: '', value: '' }];
+    const dataObj = {
+      ...record,
+      ...(record.measurementsData || {}),
+      ...(record.values || {})
+    };
+    const keys = Object.keys(dataObj).filter(key => !ignoreKeys.includes(key));
+    const fields = keys
+      .map((key) => {
+        const val = dataObj[key];
+        const flatVal = (typeof val === 'object' && val !== null) ? (val.value ?? '') : val;
+        return { part: key, value: flatVal ?? '' };
+      })
+      .filter((f) => f.value !== '' && f.value !== undefined && f.value !== null);
+    return fields.length > 0 ? fields : [{ part: '', value: '' }];
   };
 
   useEffect(() => {
@@ -178,6 +202,13 @@ export default function CustomerProfile() {
     }
   };
 
+  // Opens the edit form pre-filled with the currently viewed record's parts
+  const handleEditMeasurements = () => {
+    setActiveFields(getEditableFields(measurements));
+    setEditingMeasurementId(measurements._id || null);
+    setIsEditingMeasurements(true);
+  };
+
   const handleSaveMeasurements = async () => {
     const payload = { 
       title: measurements.title || 'Custom Style', 
@@ -200,13 +231,29 @@ export default function CustomerProfile() {
     setIsSavingMeasurements(true);
     setMeasurementsSaved(false);
     try {
-      const response = await api.post(`/measurements/customer/${id}`, payload);
-      const updatedList = [normalizeData(response.data.data), ...measurementsList];
-      setMeasurementsList(updatedList);
-      setMeasurements(updatedList[0]);
-      setSelectedMeasurementIndex(0);
+      if (editingMeasurementId) {
+        // Editing an existing record in place
+        const response = await api.put(`/measurements/${editingMeasurementId}`, payload);
+        const updatedRecord = normalizeData(response.data.data);
+        const updatedList = measurementsList.map((m) =>
+          String(m._id) === String(editingMeasurementId) ? updatedRecord : m
+        );
+        setMeasurementsList(updatedList);
+        const newIndex = updatedList.findIndex((m) => String(m._id) === String(editingMeasurementId));
+        setMeasurements(updatedRecord);
+        setSelectedMeasurementIndex(newIndex >= 0 ? newIndex : 0);
+      } else {
+        // Creating a brand-new history entry
+        const response = await api.post(`/measurements/customer/${id}`, payload);
+        const updatedList = [normalizeData(response.data.data), ...measurementsList];
+        setMeasurementsList(updatedList);
+        setMeasurements(updatedList[0]);
+        setSelectedMeasurementIndex(0);
+      }
+
       setHasMeasurements(true);
       setIsEditingMeasurements(false);
+      setEditingMeasurementId(null);
       setMeasurementsSaved(true);
       setTimeout(() => setMeasurementsSaved(false), 3000);
     } catch (err) {
@@ -235,13 +282,22 @@ export default function CustomerProfile() {
       setSubMeasurements(normalizeData(historyList[0]));
       setSelectedSubIndex(0);
       setIsEditingSubMeasurements(false);
+      setEditingSubMeasurementId(null);
     } else {
       setSubMeasurements({ title: '', unit: 'inches' });
       setActiveSubFields([{ part: '', value: '' }]);
       setSelectedSubIndex(0);
       setIsEditingSubMeasurements(true);
+      setEditingSubMeasurementId(null);
     }
     setShowSubMeasurementModal(true);
+  };
+
+  // Opens the sub-profile edit form pre-filled with the currently viewed record's parts
+  const handleEditSubMeasurements = () => {
+    setActiveSubFields(getEditableFields(subMeasurements));
+    setEditingSubMeasurementId(subMeasurements._id || null);
+    setIsEditingSubMeasurements(true);
   };
 
   const handleSaveSubMeasurements = async (e) => {
@@ -267,8 +323,23 @@ export default function CustomerProfile() {
 
     setIsSavingSubMeasurements(true);
     try {
-      const response = await api.put(`/customers/${id}/sub-profiles/${activeSubProfile._id}/measurements`, payload);
-      const updatedCust = response.data.data;
+      let updatedCust;
+
+      if (editingSubMeasurementId) {
+        // Editing an existing sub-profile record in place
+        const response = await api.put(
+          `/customers/${id}/sub-profiles/${activeSubProfile._id}/measurements/${editingSubMeasurementId}`,
+          payload
+        );
+        updatedCust = response.data.data;
+      } else {
+        // Creating a brand-new sub-profile history entry
+        const response = await api.put(
+          `/customers/${id}/sub-profiles/${activeSubProfile._id}/measurements`,
+          payload
+        );
+        updatedCust = response.data.data;
+      }
 
       const freshSub = updatedCust.subProfiles.find(s => String(s._id) === String(activeSubProfile._id));
 
@@ -279,9 +350,18 @@ export default function CustomerProfile() {
 
       setCustomer(updatedCust);
       setActiveSubProfile(freshSub);
-      setSubMeasurements(freshHistory[0]);
-      setSelectedSubIndex(0);
+
+      if (editingSubMeasurementId) {
+        const idx = freshHistory.findIndex((m) => String(m._id) === String(editingSubMeasurementId));
+        setSubMeasurements(freshHistory[idx >= 0 ? idx : 0]);
+        setSelectedSubIndex(idx >= 0 ? idx : 0);
+      } else {
+        setSubMeasurements(freshHistory[0]);
+        setSelectedSubIndex(0);
+      }
+
       setIsEditingSubMeasurements(false);
+      setEditingSubMeasurementId(null);
     } catch (err) {
       console.error("Sub measurement error:", err);
       alert(err.response?.data?.error || 'Failed to save sub-profile measurements.');
@@ -394,14 +474,20 @@ export default function CustomerProfile() {
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <h3 className="font-extrabold text-brand-dark text-lg">Digital Measurements</h3>
-                    {!isEditingMeasurements && (
-                      <button onClick={() => {
-                        setActiveFields([{ part: '', value: '' }]);
-                        setMeasurements({ title: '', unit: 'inches' });
-                        setIsEditingMeasurements(true);
-                      }} className="px-5 py-2.5 bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center">
-                        <Plus className="w-4 h-4 mr-1 shrink-0" /> {hasMeasurements ? 'New Style Record' : 'Add Measurement'}
-                      </button>
+                    {!isEditingMeasurements && hasMeasurements && (
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <button onClick={handleEditMeasurements} className="px-5 py-2.5 bg-gray-100 text-brand-dark font-bold text-xs sm:text-sm rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center">
+                          <Edit3 className="w-4 h-4 mr-1.5 shrink-0" /> Edit This Record
+                        </button>
+                        <button onClick={() => {
+                          setActiveFields([{ part: '', value: '' }]);
+                          setMeasurements({ title: '', unit: 'inches' });
+                          setEditingMeasurementId(null);
+                          setIsEditingMeasurements(true);
+                        }} className="px-5 py-2.5 bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center">
+                          <Plus className="w-4 h-4 mr-1 shrink-0" /> New Style Record
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -436,6 +522,7 @@ export default function CustomerProfile() {
                       <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">Create a custom measurement profile for this client based on the style they want to sew.</p>
                       <button onClick={() => {
                         setActiveFields([{ part: '', value: '' }]);
+                        setEditingMeasurementId(null);
                         setIsEditingMeasurements(true);
                       }} className="px-6 py-3 bg-primary text-white font-bold text-sm rounded-2xl hover:bg-primary-dark shadow-md shadow-primary/20">
                         + Add First Style
@@ -445,6 +532,12 @@ export default function CustomerProfile() {
                     
                     /* NEW DYNAMIC EDIT MODE */
                     <div className="space-y-6 animate-fade-in">
+                      {editingMeasurementId && (
+                        <div className="flex items-center text-xs font-bold text-primary bg-primary/5 px-4 py-2.5 rounded-xl">
+                          <Edit3 className="w-3.5 h-3.5 mr-2 shrink-0" /> Editing existing record — update or add measurement parts below.
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Style Name (e.g. Gown, Agbada)</label>
@@ -509,7 +602,7 @@ export default function CustomerProfile() {
                           {isSavingMeasurements ? 'Saving...' : <><Save className="w-4 h-4 mr-2"/> Save Measurements</>}
                         </button>
                         {hasMeasurements && (
-                          <button onClick={() => setIsEditingMeasurements(false)} className="px-6 py-3.5 bg-gray-100 text-gray-600 font-bold text-sm rounded-2xl hover:bg-gray-200 transition-colors">
+                          <button onClick={() => { setIsEditingMeasurements(false); setEditingMeasurementId(null); }} className="px-6 py-3.5 bg-gray-100 text-gray-600 font-bold text-sm rounded-2xl hover:bg-gray-200 transition-colors">
                             Cancel
                           </button>
                         )}
@@ -676,13 +769,21 @@ export default function CustomerProfile() {
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">{activeSubProfile.relationship} ({activeSubProfile.gender})</p>
                           </div>
                           {!isEditingSubMeasurements && (
-                            <button onClick={() => {
-                              setActiveSubFields([{ part: '', value: '' }]);
-                              setSubMeasurements({ title: '', unit: 'inches' });
-                              setIsEditingSubMeasurements(true);
-                            }} className="px-4 py-2.5 bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center">
-                              <Plus className="w-4 h-4 mr-1 shrink-0" /> New Style Record
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                              {activeSubProfile.measurements && activeSubProfile.measurements.length > 0 && (
+                                <button onClick={handleEditSubMeasurements} className="px-4 py-2.5 bg-gray-100 text-brand-dark font-bold text-xs sm:text-sm rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center">
+                                  <Edit3 className="w-4 h-4 mr-1.5 shrink-0" /> Edit Record
+                                </button>
+                              )}
+                              <button onClick={() => {
+                                setActiveSubFields([{ part: '', value: '' }]);
+                                setSubMeasurements({ title: '', unit: 'inches' });
+                                setEditingSubMeasurementId(null);
+                                setIsEditingSubMeasurements(true);
+                              }} className="px-4 py-2.5 bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center">
+                                <Plus className="w-4 h-4 mr-1 shrink-0" /> New Style Record
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -712,6 +813,12 @@ export default function CustomerProfile() {
 
                         {isEditingSubMeasurements ? (
                           <form onSubmit={handleSaveSubMeasurements} className="space-y-6 animate-fade-in">
+                            {editingSubMeasurementId && (
+                              <div className="flex items-center text-xs font-bold text-primary bg-primary/5 px-4 py-2.5 rounded-xl">
+                                <Edit3 className="w-3.5 h-3.5 mr-2 shrink-0" /> Editing existing record — update or add measurement parts below.
+                              </div>
+                            )}
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Style Name (e.g. Gown)</label>
@@ -774,6 +881,7 @@ export default function CustomerProfile() {
                               {(activeSubProfile.measurements && activeSubProfile.measurements.length > 0) && (
                                 <button type="button" onClick={() => {
                                   setIsEditingSubMeasurements(false);
+                                  setEditingSubMeasurementId(null);
                                   setSubMeasurements(normalizeData(activeSubProfile.measurements[selectedSubIndex]));
                                 }} className="px-5 py-3 text-gray-600 font-bold text-sm hover:bg-gray-100 rounded-2xl w-full sm:w-auto">Cancel</button>
                               )}
