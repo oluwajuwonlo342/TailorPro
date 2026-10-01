@@ -296,14 +296,19 @@ export default function CustomerProfile() {
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };
 
-  const DisplayValue = ({ label, value, unit }) => (
-    value !== undefined && value !== null && value !== '' ? (
+  const DisplayValue = ({ label, value, unit }) => {
+    let displayStr = value;
+    if (typeof value === 'object' && value !== null) {
+      displayStr = value.value !== undefined ? value.value : JSON.stringify(value);
+    }
+
+    return (displayStr !== undefined && displayStr !== null && displayStr !== '') ? (
       <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100 flex flex-col justify-center">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 truncate" title={label}>{formatLabel(label)}</p>
-        <p className="text-base sm:text-lg font-black text-brand-dark">{value} <span className="text-xs font-bold text-gray-400">{unit || 'inches'}</span></p>
+        <p className="text-base sm:text-lg font-black text-brand-dark">{displayStr} <span className="text-xs font-bold text-gray-400">{unit || 'inches'}</span></p>
       </div>
-    ) : null
-  );
+    ) : null;
+  };
 
   if (loading) return <div className="flex h-64 items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   if (!customer) return <div className="text-center py-20 px-4"><h2 className="text-2xl font-bold text-gray-700">Customer not found</h2><Link to="/customers" className="text-primary hover:underline mt-4 inline-block font-bold">Return to Customer List</Link></div>;
@@ -543,9 +548,11 @@ export default function CustomerProfile() {
                             );
                           }
 
-                          return keys.map((key) => (
-                            <DisplayValue key={key} label={key} value={dataObj[key]} unit={measurements.unit} />
-                          ));
+                          return keys.map((key) => {
+                            const val = dataObj[key];
+                            if (typeof val === 'object' && val !== null && val.value === undefined) return null;
+                            return <DisplayValue key={key} label={key} value={val} unit={measurements.unit} />;
+                          });
                         })()}
                       </div>
                     </div>
@@ -799,9 +806,11 @@ export default function CustomerProfile() {
                                   );
                                 }
 
-                                return keys.map((key) => (
-                                  <DisplayValue key={key} label={key} value={dataObj[key]} unit={subMeasurements.unit} />
-                                ));
+                                return keys.map((key) => {
+                                  const val = dataObj[key];
+                                  if (typeof val === 'object' && val !== null && val.value === undefined) return null;
+                                  return <DisplayValue key={key} label={key} value={val} unit={subMeasurements.unit} />;
+                                });
                               })()}
                             </div>
                           </div>
