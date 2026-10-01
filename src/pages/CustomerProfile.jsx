@@ -21,6 +21,7 @@ const ignoreKeys = [
   'subProfileId', 
   'targetType', 
   'measurementsData',
+  'values',
   'user',
   'customer',
   'gender',
@@ -75,6 +76,9 @@ export default function CustomerProfile() {
     let flat = { ...data };
     if (data.measurementsData) {
       flat = { ...flat, ...data.measurementsData };
+    }
+    if (data.values) {
+      flat = { ...flat, ...data.values };
     }
     return flat;
   };
@@ -293,7 +297,7 @@ export default function CustomerProfile() {
   };
 
   const DisplayValue = ({ label, value, unit }) => (
-    value ? (
+    value !== undefined && value !== null && value !== '' ? (
       <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100 flex flex-col justify-center">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 truncate" title={label}>{formatLabel(label)}</p>
         <p className="text-base sm:text-lg font-black text-brand-dark">{value} <span className="text-xs font-bold text-gray-400">{unit || 'inches'}</span></p>
@@ -524,7 +528,11 @@ export default function CustomerProfile() {
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                         {(() => {
-                          const dataObj = measurements.measurementsData || measurements;
+                          const dataObj = {
+                            ...measurements,
+                            ...(measurements.measurementsData || {}),
+                            ...(measurements.values || {})
+                          };
                           const keys = Object.keys(dataObj).filter(key => !ignoreKeys.includes(key));
 
                           if (keys.length === 0) {
@@ -776,7 +784,11 @@ export default function CustomerProfile() {
                             
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                               {(() => {
-                                const dataObj = subMeasurements.measurementsData || subMeasurements;
+                                const dataObj = {
+                                  ...subMeasurements,
+                                  ...(subMeasurements.measurementsData || {}),
+                                  ...(subMeasurements.values || {})
+                                };
                                 const keys = Object.keys(dataObj).filter(key => !ignoreKeys.includes(key));
 
                                 if (keys.length === 0) {
