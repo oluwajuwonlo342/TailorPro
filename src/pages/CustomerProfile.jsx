@@ -232,7 +232,7 @@ export default function CustomerProfile() {
     setActiveSubProfile(sub);
     const historyList = sub.measurements || [];
     if (historyList.length > 0) {
-      setSubMeasurements(historyList[0]);
+      setSubMeasurements(normalizeData(historyList[0]));
       setSelectedSubIndex(0);
       setIsEditingSubMeasurements(false);
     } else {
@@ -697,7 +697,7 @@ export default function CustomerProfile() {
                               onChange={(e) => {
                                 const idx = Number(e.target.value);
                                 setSelectedSubIndex(idx);
-                                setSubMeasurements(activeSubProfile.measurements[idx]);
+                                setSubMeasurements(normalizeData(activeSubProfile.measurements[idx]));
                               }}
                               className="w-full sm:w-auto px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none focus:border-primary shadow-sm"
                             >
@@ -774,7 +774,7 @@ export default function CustomerProfile() {
                               {(activeSubProfile.measurements && activeSubProfile.measurements.length > 0) && (
                                 <button type="button" onClick={() => {
                                   setIsEditingSubMeasurements(false);
-                                  setSubMeasurements(activeSubProfile.measurements[selectedSubIndex]);
+                                  setSubMeasurements(normalizeData(activeSubProfile.measurements[selectedSubIndex]));
                                 }} className="px-5 py-3 text-gray-600 font-bold text-sm hover:bg-gray-100 rounded-2xl w-full sm:w-auto">Cancel</button>
                               )}
                               <button type="submit" disabled={isSavingSubMeasurements} className="px-6 py-3.5 bg-primary text-white font-bold text-sm rounded-2xl hover:bg-primary-dark w-full sm:w-auto shadow-md shadow-primary/20">
