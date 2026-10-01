@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../services/api'; 
-import { Scissors, CheckCircle2, AlertCircle, Ruler, Info } from 'lucide-react';
+import { Scissors, CheckCircle2, AlertCircle, Ruler, Info, Plus, Trash2, Shirt } from 'lucide-react';
 
 export default function PublicMeasurementForm() {
   const [searchParams] = useSearchParams();
-  
-  // Accept both 'token' and 'cid' so existing dashboard links don't break
   const customerToken = searchParams.get('token') || searchParams.get('cid'); 
   const subProfileId = searchParams.get('sid'); 
 
@@ -17,7 +15,11 @@ export default function PublicMeasurementForm() {
   
   const [targetInfo, setTargetInfo] = useState({ name: '', gender: 'Male', relationship: 'Self' });
   const [unit, setUnit] = useState('inches');
-  const [measurements, setMeasurements] = useState({});
+  
+  // Dynamic Styles State
+  const [outfits, setOutfits] = useState([
+    { id: Date.now(), styleName: '', fields: [{ id: Date.now() + 1, name: '', value: '' }] }
+  ]);
 
   useEffect(() => {
     if (!customerToken) {
@@ -59,8 +61,47 @@ export default function PublicMeasurementForm() {
     fetchTargetDetails();
   }, [customerToken, subProfileId]);
 
-  const handleChange = (e) => {
-    setMeasurements({ ...measurements, [e.target.name]: e.target.value });
+  // --- Dynamic Form Handlers ---
+  const addOutfit = () => {
+    setOutfits([...outfits, { id: Date.now(), styleName: '', fields: [{ id: Date.now() + 1, name: '', value: '' }] }]);
+  };
+
+  const removeOutfit = (outfitId) => {
+    setOutfits(outfits.filter(o => o.id !== outfitId));
+  };
+
+  const updateOutfitName = (outfitId, name) => {
+    setOutfits(outfits.map(o => o.id === outfitId ? { ...o, styleName: name } : o));
+  };
+
+  const addField = (outfitId) => {
+    setOutfits(outfits.map(o => {
+      if (o.id === outfitId) {
+        return { ...o, fields: [...o.fields, { id: Date.now(), name: '', value: '' }] };
+      }
+      return o;
+    }));
+  };
+
+  const removeField = (outfitId, fieldId) => {
+    setOutfits(outfits.map(o => {
+      if (o.id === outfitId) {
+        return { ...o, fields: o.fields.filter(f => f.id !== fieldId) };
+      }
+      return o;
+    }));
+  };
+
+  const updateField = (outfitId, fieldId, key, val) => {
+    setOutfits(outfits.map(o => {
+      if (o.id === outfitId) {
+        return {
+          ...o,
+          fields: o.fields.map(f => f.id === fieldId ? { ...f, [key]: val } : f)
+        };
+      }
+      return o;
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -68,24 +109,34 @@ export default function PublicMeasurementForm() {
     setSubmitting(true);
     setError('');
 
+    // Transform array into nested object: { "Gown": { "Bust": "45", "Waist": "30" } }
+    const measurementsData = {};
+    outfits.forEach(outfit => {
+      const styleKey = outfit.styleName.trim() || 'General Outfit';
+      measurementsData[styleKey] = {};
+      
+      outfit.fields.forEach(field => {
+        if (field.name.trim()) {
+          measurementsData[styleKey][field.name.trim()] = field.value;
+        }
+      });
+    });
+
     try {
       await api.post(`/measurements/public/${customerToken}`, {
         subProfileId,
         targetType: subProfileId ? 'subProfile' : 'main',
-        measurementsData: measurements,
+        measurementsData,
         unit,
         gender: targetInfo.gender
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to submit measurements. Please check your network and try again.');
+      setError(err.response?.data?.error || 'Failed to submit measurements. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
-
-  // Helper to format camelCase to Title Case for labels
-  const formatLabel = (text) => text.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
 
   if (loading) {
     return (
@@ -105,7 +156,7 @@ export default function PublicMeasurementForm() {
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-brand-dark mb-3">Measurements Received!</h2>
           <p className="text-gray-600 text-sm font-medium leading-relaxed">
-            Thank you, <span className="font-bold text-brand-dark">{targetInfo.name}</span>. Your sizing details have been securely transmitted to your tailor's dashboard.
+            Thank you, <span className="font-bold text-brand-dark">{targetInfo.name}</span>. Your styling details have been securely transmitted to the dashboard.
           </p>
           <p className="text-xs text-gray-400 mt-8 font-semibold uppercase tracking-wider">You may now close this window</p>
         </div>
@@ -127,16 +178,9 @@ export default function PublicMeasurementForm() {
     );
   }
 
-  // Group fields for better UX
-  const femaleTopFields = ['shoulder', 'bust', 'underBust', 'waist', 'shoulderToNipple', 'halfLength', 'gownLength', 'armHole', 'sleeveLength'];
-  const femaleBottomFields = ['skirtLength', 'trouserLength'];
-  
-  const maleTopFields = ['neck', 'shoulder', 'chest', 'waist', 'armHole', 'sleeveLength', 'bicep', 'wrist', 'topLength'];
-  const maleBottomFields = ['trouserWaist', 'hips', 'thigh', 'knee', 'trouserLength', 'inseam'];
-
   return (
     <div className="min-h-screen bg-brand-bg py-8 sm:py-12 px-4 font-sans flex flex-col items-center">
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="w-full max-w-3xl bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
         
         {/* Header */}
         <div className="bg-brand-dark px-6 py-8 sm:p-10 text-center relative overflow-hidden">
@@ -144,7 +188,7 @@ export default function PublicMeasurementForm() {
           <div className="w-14 h-14 bg-white/10 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/20">
             <Ruler className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white mb-2 tracking-tight">Secure Sizing Form</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-white mb-2 tracking-tight">Custom Sizing Form</h1>
           <p className="text-gray-300 text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1">
             <span>Providing details for:</span> 
             <span className="font-bold text-white bg-white/10 px-3 py-1 rounded-full text-xs uppercase tracking-wider ml-1">
@@ -163,11 +207,11 @@ export default function PublicMeasurementForm() {
           <div className="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <p className="text-xs sm:text-sm text-blue-800 font-medium leading-relaxed">
-              Please enter your measurements as accurately as possible. Leave any fields blank if you are unsure or if they do not apply to your desired outfit.
+              Define your outfit styles below (e.g., "Wedding Gown" or "Senator Suit") and add the specific measurements required for each.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8 sm:space-y-10">
+          <form onSubmit={handleSubmit} className="space-y-8">
             
             {/* Unit Selection */}
             <div className="flex justify-between items-center bg-gray-50 p-5 rounded-2xl border border-gray-100">
@@ -185,71 +229,92 @@ export default function PublicMeasurementForm() {
               </select>
             </div>
 
-            {targetInfo.gender === 'Female' ? (
-              <>
-                {/* Female Top */}
-                <div className="space-y-5">
-                  <div className="border-b-2 border-gray-100 pb-2">
-                    <h3 className="text-sm font-black text-primary uppercase tracking-widest">Top / Gown Measurements</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-                    {femaleTopFields.map((field) => (
-                      <div key={field}>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{formatLabel(field)}</label>
-                        <input type="number" step="0.5" name={field} onChange={handleChange} className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-bold text-brand-dark placeholder:text-gray-300 shadow-sm" placeholder="0.0" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            {/* Dynamic Outfit Builder */}
+            <div className="space-y-6">
+              {outfits.map((outfit, index) => (
+                <div key={outfit.id} className="bg-white border border-gray-200 rounded-3xl p-5 sm:p-6 shadow-sm relative group">
+                  
+                  {/* Remove Outfit Button (Only if more than 1) */}
+                  {outfits.length > 1 && (
+                    <button 
+                      type="button" 
+                      onClick={() => removeOutfit(outfit.id)}
+                      className="absolute top-5 right-5 text-gray-400 hover:text-red-500 transition-colors bg-white"
+                      title="Remove Style"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
 
-                {/* Female Bottom */}
-                <div className="space-y-5 pt-2">
-                  <div className="border-b-2 border-gray-100 pb-2">
-                    <h3 className="text-sm font-black text-primary uppercase tracking-widest">Bottom / Skirt Measurements</h3>
+                  <div className="mb-6 pr-8">
+                    <label className="block text-xs font-black text-primary uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                      <Shirt className="w-4 h-4" /> Outfit Style {index + 1}
+                    </label>
+                    <input 
+                      type="text" 
+                      required
+                      value={outfit.styleName}
+                      onChange={(e) => updateOutfitName(outfit.id, e.target.value)}
+                      placeholder="e.g. A-Line Gown, Agbada, Skirt..." 
+                      className="w-full text-lg sm:text-xl font-bold bg-transparent border-b-2 border-gray-200 focus:border-primary outline-none py-2 px-1 text-brand-dark placeholder:text-gray-300 transition-colors"
+                    />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-                    {femaleBottomFields.map((field) => (
-                      <div key={field}>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{formatLabel(field)}</label>
-                        <input type="number" step="0.5" name={field} onChange={handleChange} className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-bold text-brand-dark placeholder:text-gray-300 shadow-sm" placeholder="0.0" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Male Top */}
-                <div className="space-y-5">
-                  <div className="border-b-2 border-gray-100 pb-2">
-                    <h3 className="text-sm font-black text-primary uppercase tracking-widest">Top / Shirt Measurements</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-                    {maleTopFields.map((field) => (
-                      <div key={field}>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{formatLabel(field)}</label>
-                        <input type="number" step="0.5" name={field} onChange={handleChange} className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-bold text-brand-dark placeholder:text-gray-300 shadow-sm" placeholder="0.0" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Male Bottom */}
-                <div className="space-y-5 pt-2">
-                  <div className="border-b-2 border-gray-100 pb-2">
-                    <h3 className="text-sm font-black text-primary uppercase tracking-widest">Bottom / Trouser Measurements</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-                    {maleBottomFields.map((field) => (
-                      <div key={field}>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{formatLabel(field)}</label>
-                        <input type="number" step="0.5" name={field} onChange={handleChange} className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-bold text-brand-dark placeholder:text-gray-300 shadow-sm" placeholder="0.0" />
+                  {/* Measurement Fields Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {outfit.fields.map((field) => (
+                      <div key={field.id} className="flex items-center gap-2">
+                        <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl flex items-center overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all">
+                          <input 
+                            type="text" 
+                            required
+                            placeholder="Part (e.g. Bust)"
+                            value={field.name}
+                            onChange={(e) => updateField(outfit.id, field.id, 'name', e.target.value)}
+                            className="w-1/2 bg-transparent border-r border-gray-200 px-3 py-3 text-sm font-bold text-gray-700 outline-none placeholder:text-gray-400 placeholder:font-medium"
+                          />
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            required
+                            placeholder="Value"
+                            value={field.value}
+                            onChange={(e) => updateField(outfit.id, field.id, 'value', e.target.value)}
+                            className="w-1/2 bg-transparent px-3 py-3 text-sm font-black text-brand-dark outline-none placeholder:text-gray-300 placeholder:font-medium"
+                          />
+                        </div>
+                        
+                        {/* Remove Field Button (Only if more than 1 field) */}
+                        <button 
+                          type="button" 
+                          onClick={() => removeField(outfit.id, field.id)}
+                          disabled={outfit.fields.length === 1}
+                          className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400 shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
+
+                  <button 
+                    type="button" 
+                    onClick={() => addField(outfit.id)}
+                    className="mt-5 text-sm font-bold text-primary flex items-center gap-1.5 hover:text-primary-dark hover:bg-primary/5 px-3 py-2 rounded-lg transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Add Measurement Part
+                  </button>
                 </div>
-              </>
-            )}
+              ))}
+            </div>
+
+            <button 
+              type="button" 
+              onClick={addOutfit}
+              className="w-full py-4 border-2 border-dashed border-gray-300 text-gray-500 font-bold text-sm rounded-2xl hover:border-primary hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2"
+            >
+              <Plus className="w-5 h-5" /> Add Another Outfit Style
+            </button>
 
             <div className="pt-6 border-t border-gray-100">
               <button 
