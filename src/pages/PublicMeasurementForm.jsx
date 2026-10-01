@@ -109,27 +109,30 @@ export default function PublicMeasurementForm() {
     setSubmitting(true);
     setError('');
 
-    // Transform array into nested object: { "Gown": { "Bust": "45", "Waist": "30" } }
-    const measurementsData = {};
-    outfits.forEach(outfit => {
-      const styleKey = outfit.styleName.trim() || 'General Outfit';
-      measurementsData[styleKey] = {};
-      
-      outfit.fields.forEach(field => {
-        if (field.name.trim()) {
-          measurementsData[styleKey][field.name.trim()] = field.value;
-        }
-      });
-    });
-
     try {
-      await api.post(`/measurements/public/${customerToken}`, {
-        subProfileId,
-        targetType: subProfileId ? 'subProfile' : 'main',
-        measurementsData,
-        unit,
-        gender: targetInfo.gender
+      // Submit ONE flat record per outfit style — this is the exact
+      // shape the dashboard's own "New Style Record" save uses
+      // (title, unit, + each part as a top-level key), so it displays
+      // correctly without needing any extra un-nesting logic.
+      const requests = outfits.map((outfit) => {
+        const payload = {
+          subProfileId: subProfileId || undefined,
+          targetType: subProfileId ? 'subProfile' : 'main',
+          title: outfit.styleName.trim() || 'Custom Style',
+          unit,
+          gender: targetInfo.gender
+        };
+
+        outfit.fields.forEach((field) => {
+          if (field.name.trim() !== '' && field.value !== '') {
+            payload[field.name.trim()] = field.value;
+          }
+        });
+
+        return api.post(`/measurements/public/${customerToken}`, payload);
       });
+
+      await Promise.all(requests);
       setSubmitted(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit measurements. Please try again.');
