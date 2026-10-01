@@ -24,7 +24,8 @@ const ignoreKeys = [
   'user',
   'customer',
   'gender',
-  '__t'
+  '__t',
+  'id'
 ];
 
 export default function CustomerProfile() {
@@ -522,11 +523,22 @@ export default function CustomerProfile() {
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                        {Object.keys(measurements)
-                          .filter(key => !ignoreKeys.includes(key))
-                          .map((key) => (
-                            <DisplayValue key={key} label={key} value={measurements[key]} unit={measurements.unit} />
-                        ))}
+                        {(() => {
+                          const dataObj = measurements.measurementsData || measurements;
+                          const keys = Object.keys(dataObj).filter(key => !ignoreKeys.includes(key));
+
+                          if (keys.length === 0) {
+                            return (
+                              <div className="col-span-full py-8 text-center text-gray-400 text-xs font-bold">
+                                No measurement parameters found in this record. Try adding a new style record manually.
+                              </div>
+                            );
+                          }
+
+                          return keys.map((key) => (
+                            <DisplayValue key={key} label={key} value={dataObj[key]} unit={measurements.unit} />
+                          ));
+                        })()}
                       </div>
                     </div>
                   )}
@@ -763,11 +775,22 @@ export default function CustomerProfile() {
                             </div>
                             
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                              {Object.keys(subMeasurements)
-                                .filter(key => !ignoreKeys.includes(key))
-                                .map((key) => (
-                                  <DisplayValue key={key} label={key} value={subMeasurements[key]} unit={subMeasurements.unit} />
-                              ))}
+                              {(() => {
+                                const dataObj = subMeasurements.measurementsData || subMeasurements;
+                                const keys = Object.keys(dataObj).filter(key => !ignoreKeys.includes(key));
+
+                                if (keys.length === 0) {
+                                  return (
+                                    <div className="col-span-full py-8 text-center text-gray-400 text-xs font-bold">
+                                      No measurement parameters found in this sub-profile record.
+                                    </div>
+                                  );
+                                }
+
+                                return keys.map((key) => (
+                                  <DisplayValue key={key} label={key} value={dataObj[key]} unit={subMeasurements.unit} />
+                                ));
+                              })()}
                             </div>
                           </div>
                         )}
@@ -788,7 +811,7 @@ export default function CustomerProfile() {
                   </div>
 
                   {customerOrders.length === 0 ? (
-                    <div className="test-center py-16 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 px-4">
+                    <div className="text-center py-16 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 px-4">
                       <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <h3 className="text-base font-bold text-brand-dark mb-1">No Active Orders</h3>
                       <p className="text-gray-500 text-xs">Create an order for this client to track payments and outfit status.</p>
