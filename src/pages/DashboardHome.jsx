@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext'; // Assuming you have this to grab user plan details
-import { Users, ShoppingBag, DollarSign, CheckCircle, Clock, Plus, ArrowUpRight, CreditCard, ChevronRight, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Users, ShoppingBag, DollarSign, CheckCircle, Clock, Plus, ArrowUpRight, CreditCard, ChevronRight, AlertCircle, Flame, Timer, BellRing } from 'lucide-react';
 
 export default function DashboardHome() {
-  const { user } = useAuth(); // Assuming auth context provides the user
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalCustomers: 0,
     activeOrders: 0,
@@ -45,10 +45,36 @@ export default function DashboardHome() {
   // Calculate usage for Free users
   const isFreePlan = user?.plan === 'free' || !user?.plan;
   const customerLimit = 20;
-  const orderLimit = 30; // Monthly limit (assuming totalOrders handles this logic on backend, UI just displays it)
+  const orderLimit = 30; 
   
   const customerPercentage = Math.min((stats.totalCustomers / customerLimit) * 100, 100);
-  const orderPercentage = Math.min((stats.activeOrders / orderLimit) * 100, 100); // Simplified calculation for UI
+  const orderPercentage = Math.min((stats.activeOrders / orderLimit) * 100, 100);
+
+  // Time-based Order Urgency Logic
+  const checkOrderUrgency = (dueDate, status) => {
+    if (status === 'Delivered' || status === 'Cancelled' || status === 'Completed') return { type: 'normal', days: null };
+    
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const targetDate = new Date(dueDate);
+    targetDate.setHours(0,0,0,0);
+    
+    const diffTime = targetDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return { type: 'overdue', days: Math.abs(diffDays) };
+    if (diffDays >= 0 && diffDays <= 3) return { type: 'due_soon', days: diffDays };
+    return { type: 'normal', days: diffDays };
+  };
+
+  // Extract urgent orders for the top alert banner
+  const urgentOrders = stats.recentOrders.map(order => ({
+    ...order,
+    urgency: checkOrderUrgency(order.dueDate, order.status)
+  })).filter(order => order.urgency.type !== 'normal');
+
+  const overdueCount = urgentOrders.filter(o => o.urgency.type === 'overdue').length;
+  const dueSoonCount = urgentOrders.filter(o => o.urgency.type === 'due_soon').length;
 
   return (
     <div className="space-y-8 font-sans max-w-7xl mx-auto pb-20">
@@ -74,6 +100,37 @@ export default function DashboardHome() {
           </Link>
         </div>
       </div>
+
+      {/* Smart Priority Alerts Banner */}
+      {urgentOrders.length > 0 && (
+        <div className="bg-gradient-to-r from-gray-900 to-brand-dark rounded-3xl p-1 shadow-lg shadow-gray-900/10 animate-fade-in">
+          <div className="bg-white rounded-[22px] p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-white/20">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
+                <BellRing className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-brand-dark text-lg">Attention Required</h3>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {overdueCount > 0 && (
+                    <span className="inline-flex items-center text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-lg border border-red-100">
+                      <Flame className="w-3.5 h-3.5 mr-1" /> {overdueCount} Overdue
+                    </span>
+                  )}
+                  {dueSoonCount > 0 && (
+                    <span className="inline-flex items-center text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100">
+                      <Timer className="w-3.5 h-3.5 mr-1" /> {dueSoonCount} Due Soon (2-3 Days)
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Link to="/orders" className="shrink-0 px-5 py-2.5 bg-brand-dark text-white text-xs font-bold rounded-xl hover:bg-black transition-colors shadow-md">
+              Review Schedule
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Free Plan Usage Tracker */}
       {isFreePlan && (
@@ -116,7 +173,6 @@ export default function DashboardHome() {
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        {/* Total Customers */}
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group">
           <div className="flex justify-between items-start mb-4">
             <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -129,7 +185,6 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* Active Orders */}
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group">
           <div className="flex justify-between items-start mb-4">
             <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -142,7 +197,6 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* Outstanding Balances */}
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group">
           <div className="flex justify-between items-start mb-4">
             <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -155,7 +209,6 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* Total Revenue Collected */}
         <div className="bg-gradient-to-br from-[#0F1423] to-[#1a2235] p-6 rounded-3xl border border-gray-800 shadow-xl flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute right-0 bottom-0 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
             <DollarSign className="w-48 h-48 text-white" />
@@ -176,7 +229,7 @@ export default function DashboardHome() {
       {/* Recent Activity Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Recent Orders */}
+        {/* Recent Orders (Enhanced with Urgency Badges) */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-full">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-extrabold text-brand-dark text-lg">Recent Orders</h3>
@@ -196,20 +249,43 @@ export default function DashboardHome() {
             </div>
           ) : (
             <div className="space-y-3">
-              {stats.recentOrders.map(order => (
-                <div key={order._id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div>
-                    <h4 className="font-bold text-brand-dark text-sm">{order.outfitName}</h4>
-                    <p className="text-xs font-medium text-gray-500 mt-1">{order.customer?.fullName || 'Client'} • Due {new Date(order.dueDate).toLocaleDateString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-gray-600 inline-block mb-1.5 shadow-sm">
-                      {order.status}
+              {stats.recentOrders.map(order => {
+                const urgency = checkOrderUrgency(order.dueDate, order.status);
+                let bgStyle = 'bg-gray-50/50 border-gray-100 hover:bg-gray-50';
+                let alertBadge = null;
+
+                if (urgency.type === 'overdue') {
+                  bgStyle = 'bg-red-50/40 border-red-100 hover:bg-red-50/80';
+                  alertBadge = (
+                    <span className="flex items-center text-[10px] font-black uppercase tracking-wider text-red-600 bg-red-100 px-2 py-0.5 rounded-md mt-1.5 w-fit">
+                      <Flame className="w-3 h-3 mr-1" /> {urgency.days} Day{urgency.days > 1 ? 's' : ''} Overdue
                     </span>
-                    <p className="text-sm font-black text-brand-dark">₦{order.totalAmount?.toLocaleString()}</p>
+                  );
+                } else if (urgency.type === 'due_soon') {
+                  bgStyle = 'bg-amber-50/40 border-amber-100 hover:bg-amber-50/80';
+                  alertBadge = (
+                    <span className="flex items-center text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-100 px-2 py-0.5 rounded-md mt-1.5 w-fit">
+                      <Timer className="w-3 h-3 mr-1" /> Due in {urgency.days === 0 ? 'Today' : `${urgency.days} Day${urgency.days > 1 ? 's' : ''}`}
+                    </span>
+                  );
+                }
+
+                return (
+                  <div key={order._id} className={`p-4 rounded-2xl border flex items-center justify-between transition-colors ${bgStyle}`}>
+                    <div>
+                      <h4 className="font-bold text-brand-dark text-sm">{order.outfitName}</h4>
+                      <p className="text-xs font-medium text-gray-500 mt-1">{order.customer?.fullName || 'Client'} • Due {new Date(order.dueDate).toLocaleDateString()}</p>
+                      {alertBadge}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-gray-600 inline-block mb-1.5 shadow-sm">
+                        {order.status}
+                      </span>
+                      <p className="text-sm font-black text-brand-dark">₦{order.totalAmount?.toLocaleString()}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
