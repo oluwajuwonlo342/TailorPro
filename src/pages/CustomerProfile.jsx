@@ -9,6 +9,19 @@ const formatLabel = (key) => {
   return result.charAt(0).toUpperCase() + result.slice(1);
 };
 
+// Formats a date as "10/1/2026 11:48:55am" style, including time with seconds
+const formatDateTime = (dateInput) => {
+  const d = new Date(dateInput || Date.now());
+  const datePart = d.toLocaleDateString();
+  const timePart = d.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  }).toLowerCase().replace(' ', '');
+  return `${datePart} ${timePart}`;
+};
+
 // Keys to ignore when displaying dynamic measurement data
 const ignoreKeys = [
   '_id', 
@@ -508,7 +521,7 @@ export default function CustomerProfile() {
                       >
                         {measurementsList.map((m, idx) => (
                           <option key={m._id} value={idx}>
-                            {m.title || 'Record'} ({new Date(m.recordedDate || m.createdAt).toLocaleDateString()}) {idx === 0 ? '- Latest' : ''}
+                            {m.title || 'Record'} ({formatDateTime(m.recordedDate || m.createdAt)}) {idx === 0 ? '- Latest' : ''}
                           </option>
                         ))}
                       </select>
@@ -621,7 +634,7 @@ export default function CustomerProfile() {
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 bg-brand-dark px-5 py-4 rounded-2xl shadow-sm">
                         <span className="text-sm font-black text-white uppercase tracking-wider">{measurements.title || 'Custom Style'}</span>
-                        <span className="text-xs font-semibold text-gray-400">Recorded: {new Date(measurements.recordedDate || measurements.createdAt || Date.now()).toLocaleDateString()}</span>
+                        <span className="text-xs font-semibold text-gray-400">Recorded: {formatDateTime(measurements.recordedDate || measurements.createdAt)}</span>
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
@@ -804,7 +817,7 @@ export default function CustomerProfile() {
                             >
                               {activeSubProfile.measurements.map((m, idx) => (
                                 <option key={m._id || idx} value={idx}>
-                                  {m.title || 'Record'} ({new Date(m.recordedDate || m.createdAt || Date.now()).toLocaleDateString()}) {idx === 0 ? '- Latest' : ''}
+                                  {m.title || 'Record'} ({formatDateTime(m.recordedDate || m.createdAt)}) {idx === 0 ? '- Latest' : ''}
                                 </option>
                               ))}
                             </select>
@@ -894,7 +907,7 @@ export default function CustomerProfile() {
                           <div className="space-y-6 animate-fade-in mt-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 bg-brand-dark px-5 py-4 rounded-2xl shadow-sm">
                               <span className="text-sm font-black text-white uppercase tracking-wider">{subMeasurements.title || 'Custom Style'}</span>
-                              <span className="text-xs font-semibold text-gray-400">Recorded: {new Date(subMeasurements.recordedDate || subMeasurements.createdAt || Date.now()).toLocaleDateString()}</span>
+                              <span className="text-xs font-semibold text-gray-400">Recorded: {formatDateTime(subMeasurements.recordedDate || subMeasurements.createdAt)}</span>
                             </div>
                             
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
