@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Scissors, ShoppingBag, CreditCard, CheckCircle2, ArrowRight, Sparkles, Instagram, Twitter, Facebook } from 'lucide-react';
+// REMOVED: Instagram, Twitter, Facebook from lucide-react imports
+import { Users, Scissors, ShoppingBag, CreditCard, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -32,12 +33,9 @@ export default function LandingPage() {
       
       {/* HERO SECTION */}
       <section className="relative pt-20 pb-24 sm:pt-28 sm:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* Animated Background Blur */}
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-full max-w-[600px] h-[400px] sm:h-[600px] bg-primary/10 rounded-full blur-[100px] -z-10 pointer-events-none animate-pulse duration-10000" />
         
         <div className="grid lg:grid-cols-12 gap-16 lg:gap-8 items-center">
-          
-          {/* Left Hero Text */}
           <motion.div initial="hidden" animate="visible" variants={fadeInUp} className="lg:col-span-7 text-center lg:text-left pt-8 sm:pt-0">
             <div className="inline-flex items-center space-x-2 px-4 py-2 bg-white border border-primary/20 text-primary rounded-full text-xs sm:text-sm font-bold mb-8 shadow-sm">
               <Sparkles className="w-4 h-4" />
@@ -71,7 +69,6 @@ export default function LandingPage() {
             </div>
           </motion.div>
 
-          {/* Right Hero Visual Mockup */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="lg:col-span-5 relative mt-8 lg:mt-0 px-4 sm:px-0">
             <div className="relative mx-auto max-w-[340px] sm:max-w-md lg:max-w-none bg-white p-2.5 sm:p-4 rounded-[2rem] shadow-2xl border border-gray-100 transform lg:rotate-2 hover:rotate-0 transition-transform duration-500">
               <img 
@@ -88,7 +85,6 @@ export default function LandingPage() {
               </div>
             </div>
           </motion.div>
-
         </div>
       </section>
 
@@ -212,10 +208,17 @@ export default function LandingPage() {
             <p className="text-sm font-medium text-gray-500">© 2026 TailorPro. All rights reserved.</p>
           </div>
           
+          {/* Replaced broken lucide imports with standard inline SVGs */}
           <div className="flex gap-6">
-            <a href="#" className="text-gray-400 hover:text-brand-dark transition-colors"><Instagram className="w-5 h-5" /></a>
-            <a href="#" className="text-gray-400 hover:text-brand-dark transition-colors"><Twitter className="w-5 h-5" /></a>
-            <a href="#" className="text-gray-400 hover:text-brand-dark transition-colors"><Facebook className="w-5 h-5" /></a>
+            <a href="#" className="text-gray-400 hover:text-brand-dark transition-colors">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            <a href="#" className="text-gray-400 hover:text-brand-dark transition-colors">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg>
+            </a>
+            <a href="#" className="text-gray-400 hover:text-brand-dark transition-colors">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+            </a>
           </div>
         </div>
       </footer>
