@@ -4,6 +4,11 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Users, ShoppingBag, DollarSign, CheckCircle, Clock, Plus, ArrowUpRight, CreditCard, ChevronRight, AlertCircle, Flame, Timer, BellRing } from 'lucide-react';
 
+// Where "Add Customer" buttons go. There is no /customers/new route, and /customers/:id
+// would treat "new" as a customer ID (-> "Customer not found"). The ?add=true flag lets the
+// Customers page open its add-customer form automatically (see CustomersPage snippet).
+const ADD_CUSTOMER_PATH = '/customers?add=true';
+
 export default function DashboardHome() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -45,23 +50,23 @@ export default function DashboardHome() {
   // Calculate usage for Free users
   const isFreePlan = user?.plan === 'free' || !user?.plan;
   const customerLimit = 20;
-  const orderLimit = 30; 
-  
+  const orderLimit = 30;
+
   const customerPercentage = Math.min((stats.totalCustomers / customerLimit) * 100, 100);
   const orderPercentage = Math.min((stats.activeOrders / orderLimit) * 100, 100);
 
   // Time-based Order Urgency Logic
   const checkOrderUrgency = (dueDate, status) => {
     if (status === 'Delivered' || status === 'Cancelled' || status === 'Completed') return { type: 'normal', days: null };
-    
+
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
     const targetDate = new Date(dueDate);
-    targetDate.setHours(0,0,0,0);
-    
+    targetDate.setHours(0, 0, 0, 0);
+
     const diffTime = targetDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) return { type: 'overdue', days: Math.abs(diffDays) };
     if (diffDays >= 0 && diffDays <= 3) return { type: 'due_soon', days: diffDays };
     return { type: 'normal', days: diffDays };
@@ -78,7 +83,7 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-8 font-sans max-w-7xl mx-auto pb-20">
-      
+
       {/* Header & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
         <div>
@@ -86,14 +91,14 @@ export default function DashboardHome() {
           <p className="text-gray-500 text-sm mt-1 font-medium">Welcome back, here is what's happening in your fashion house today.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Link 
-            to="/customers/new" 
+          <Link
+            to={ADD_CUSTOMER_PATH}
             className="flex-1 sm:flex-none px-5 py-3 bg-gray-50 border border-gray-200 text-brand-dark font-bold rounded-2xl hover:bg-gray-100 transition-all flex items-center justify-center text-sm"
           >
             <Plus className="w-4 h-4 mr-1.5 text-primary" /> Add Customer
           </Link>
-          <Link 
-            to="/orders/new" 
+          <Link
+            to="/orders/new"
             className="flex-1 sm:flex-none px-6 py-3 bg-primary text-white font-bold rounded-2xl hover:bg-primary-dark transition-all shadow-md shadow-primary/20 flex items-center justify-center text-sm"
           >
             <ShoppingBag className="w-4 h-4 mr-2" /> New Order
@@ -136,7 +141,7 @@ export default function DashboardHome() {
       {isFreePlan && (
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-8">
-            
+
             {/* Customer Limit Tracker */}
             <div>
               <div className="flex justify-between items-end mb-2">
@@ -146,7 +151,7 @@ export default function DashboardHome() {
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                 <div className={`h-2 rounded-full transition-all duration-500 ${customerPercentage > 85 ? 'bg-red-500' : 'bg-primary'}`} style={{ width: `${customerPercentage}%` }}></div>
               </div>
-              {customerPercentage > 85 && <p className="text-xs text-red-500 mt-2 font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5"/> Nearing customer limit</p>}
+              {customerPercentage > 85 && <p className="text-xs text-red-500 mt-2 font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Nearing customer limit</p>}
             </div>
 
             {/* Order Limit Tracker */}
@@ -172,7 +177,7 @@ export default function DashboardHome() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        
+
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group">
           <div className="flex justify-between items-start mb-4">
             <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -228,7 +233,7 @@ export default function DashboardHome() {
 
       {/* Recent Activity Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* Recent Orders (Enhanced with Urgency Badges) */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-full">
           <div className="flex items-center justify-between mb-6">
@@ -271,13 +276,13 @@ export default function DashboardHome() {
                 }
 
                 return (
-                  <div key={order._id} className={`p-4 rounded-2xl border flex items-center justify-between transition-colors ${bgStyle}`}>
-                    <div>
-                      <h4 className="font-bold text-brand-dark text-sm">{order.outfitName}</h4>
+                  <div key={order._id} className={`p-4 rounded-2xl border flex items-center justify-between gap-3 transition-colors ${bgStyle}`}>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-brand-dark text-sm break-words">{order.outfitName}</h4>
                       <p className="text-xs font-medium text-gray-500 mt-1">{order.customer?.fullName || 'Client'} • Due {new Date(order.dueDate).toLocaleDateString()}</p>
                       {alertBadge}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-gray-600 inline-block mb-1.5 shadow-sm">
                         {order.status}
                       </span>
@@ -304,24 +309,24 @@ export default function DashboardHome() {
               <Users className="w-12 h-12 text-gray-200 mb-3" />
               <p className="text-brand-dark font-bold text-sm mb-1">No customers yet</p>
               <p className="text-gray-500 text-xs mb-4">Add your first customer to build your database.</p>
-              <Link to="/customers/new" className="text-primary font-bold text-xs bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary hover:text-white transition-colors">
+              <Link to={ADD_CUSTOMER_PATH} className="text-primary font-bold text-xs bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary hover:text-white transition-colors">
                 + Add Customer
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
               {stats.recentCustomers.map(cust => (
-                <div key={cust._id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-brand-dark text-white font-bold rounded-xl flex items-center justify-center text-sm shadow-sm">
+                <div key={cust._id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center space-x-4 min-w-0">
+                    <div className="w-10 h-10 bg-brand-dark text-white font-bold rounded-xl flex items-center justify-center text-sm shadow-sm shrink-0">
                       {cust.fullName.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <h4 className="font-bold text-brand-dark text-sm">{cust.fullName}</h4>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-brand-dark text-sm truncate">{cust.fullName}</h4>
                       <p className="text-xs font-medium text-gray-500 mt-1">{cust.phone}</p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-gray-400">
+                  <span className="text-xs font-bold text-gray-400 shrink-0">
                     {new Date(cust.createdAt).toLocaleDateString()}
                   </span>
                 </div>
