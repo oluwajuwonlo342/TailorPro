@@ -10,7 +10,22 @@ const formatLabel = (key) => {
 };
 
 // Keys to ignore when displaying dynamic measurement data
-const ignoreKeys = ['_id', 'title', 'unit', 'recordedDate', 'createdAt', 'updatedAt', '__v', 'subProfileId', 'targetType', 'measurementsData'];
+const ignoreKeys = [
+  '_id', 
+  'title', 
+  'unit', 
+  'recordedDate', 
+  'createdAt', 
+  'updatedAt', 
+  '__v', 
+  'subProfileId', 
+  'targetType', 
+  'measurementsData',
+  'user',
+  'customer',
+  'gender',
+  '__t'
+];
 
 export default function CustomerProfile() {
   const { id } = useParams();
@@ -773,7 +788,7 @@ export default function CustomerProfile() {
                   </div>
 
                   {customerOrders.length === 0 ? (
-                    <div className="text-center py-16 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 px-4">
+                    <div className="test-center py-16 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 px-4">
                       <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <h3 className="text-base font-bold text-brand-dark mb-1">No Active Orders</h3>
                       <p className="text-gray-500 text-xs">Create an order for this client to track payments and outfit status.</p>
