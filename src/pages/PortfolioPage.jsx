@@ -3,7 +3,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Image, Plus, X, Trash2, Edit3, Share2, Upload, AlertCircle, Star, ExternalLink, Search, Link2 } from 'lucide-react';
 import PortfolioLightbox from './PortfolioLightbox';
-import { GENDER_LABELS, GENDER_TABS, CATEGORIES, OCCASIONS, formatNaira } from './portfolioOptions';
+import { GENDER_LABELS, GENDER_TABS, CATEGORIES, OCCASIONS, formatNaira } from './PortfolioOptions';
 
 const EMPTY_FORM = {
   title: '',
