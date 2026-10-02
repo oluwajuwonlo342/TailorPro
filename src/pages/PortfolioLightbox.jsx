@@ -1,7 +1,7 @@
 // Save as: src/components/PortfolioLightbox.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Star, Phone } from 'lucide-react';
-import { GENDER_LABELS, formatNaira, formatMonthYear } from '../constants/portfolioOptions';
+import { GENDER_LABELS, formatNaira, formatMonthYear } from './PortfolioOptions';
 
 /*
  * item:     the portfolio piece
