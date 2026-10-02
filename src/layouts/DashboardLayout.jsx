@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, LayoutDashboard, Users, Scissors, ShoppingBag, CreditCard, LogOut, Lock } from 'lucide-react';
+import { Menu, LayoutDashboard, Users, Scissors, ShoppingBag, CreditCard, LogOut, Lock, Image } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,6 +23,7 @@ export default function DashboardLayout({ children }) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, requiresPro: false },
     { name: 'Customers', href: '/customers', icon: Users, requiresPro: false },
+    { name: 'Portfolio', href: '/portfolio', icon: Image, requiresPro: false },
     { name: 'Measurements', href: '/measurements', icon: Scissors, requiresPro: true },
     { name: 'Orders', href: '/orders', icon: ShoppingBag, requiresPro: true },
     { name: 'Payments', href: '/payments', icon: CreditCard, requiresPro: true },
