@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { Scissors, AlertCircle, Phone, MapPin, Search, Star } from 'lucide-react';
 import PortfolioLightbox from './PortfolioLightbox';
-import { GENDER_LABELS, GENDER_TABS, formatNaira } from './portfolioOptions';
+import { GENDER_LABELS, GENDER_TABS, formatNaira } from './PortfolioOptions';
 
 export default function PublicPortfolio() {
   const { userId } = useParams();
