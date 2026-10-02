@@ -23,8 +23,8 @@ import Payments from './pages/Payments';
 import Measurements from './pages/Measurements';
 import Upgrade from './pages/Upgrade';
 import OrderCreate from './pages/OrderCreate';
-import PortfolioPage from './PortfolioPage';
-import PublicPortfolio from './PublicPortfolio';
+import PortfolioPage from './pages/PortfolioPage';
+import PublicPortfolio from './pages/PublicPortfolio';
 
 // Admin Pages
 import AdminLogin from './pages/admin/AdminLogin';
