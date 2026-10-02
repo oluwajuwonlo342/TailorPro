@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { Scissors, AlertCircle, Phone, MapPin, Search, Star } from 'lucide-react';
-import PortfolioLightbox from '../components/PortfolioLightbox';
-import { GENDER_LABELS, GENDER_TABS, formatNaira } from '../constants/portfolioOptions';
+import PortfolioLightbox from './PortfolioLightbox';
+import { GENDER_LABELS, GENDER_TABS, formatNaira } from './portfolioOptions';
 
 export default function PublicPortfolio() {
   const { userId } = useParams();
