@@ -50,6 +50,13 @@ export default function PublicPortfolio() {
     [items]
   );
 
+  // Images for the hero background: the tailor's cover image if they have one,
+  // otherwise a collage of their own work (featured pieces first)
+  const heroImages = useMemo(() => {
+    if (tailor?.coverImage) return [tailor.coverImage];
+    return sortedItems.map((i) => i.images?.[0]).filter(Boolean).slice(0, 6);
+  }, [tailor, sortedItems]);
+
   const byGender = useMemo(
     () => sortedItems.filter((i) => genderFilter === 'All' || i.gender === genderFilter),
     [sortedItems, genderFilter]
@@ -125,11 +132,40 @@ export default function PublicPortfolio() {
   const filtersActive = genderFilter !== 'All' || categoryFilter !== 'All' || search.trim() !== '';
 
   return (
-    <div className="min-h-screen bg-brand-bg font-sans">
+    <div
+      className="min-h-screen bg-brand-bg font-sans"
+      style={{
+        backgroundImage: 'radial-gradient(rgba(15, 20, 35, 0.07) 1px, transparent 1px)',
+        backgroundSize: '22px 22px',
+      }}
+    >
       {/* Header */}
-      <div className="bg-brand-dark px-5 sm:px-6 py-12 sm:py-16 text-center relative overflow-hidden">
+      <div className="bg-brand-dark px-5 sm:px-6 py-14 sm:py-20 text-center relative overflow-hidden rounded-b-[2rem] sm:rounded-b-[3rem] shadow-xl">
+        {/* Background image layer: single cover photo, or a collage of the tailor's work */}
+        {heroImages.length >= 3 ? (
+          <div className="absolute inset-0 grid grid-cols-3 sm:grid-cols-6 opacity-40" aria-hidden="true">
+            {heroImages.slice(0, 6).map((src, i) => (
+              <div
+                key={src + i}
+                className={`bg-cover bg-center ${i >= 3 ? 'hidden sm:block' : ''}`}
+                style={{ backgroundImage: `url("${src}")` }}
+              />
+            ))}
+          </div>
+        ) : heroImages.length > 0 ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-40"
+            style={{ backgroundImage: `url("${heroImages[0]}")` }}
+            aria-hidden="true"
+          />
+        ) : null}
+
+        {/* Dark gradient so text stays readable on any photo */}
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/70 via-brand-dark/80 to-brand-dark" aria-hidden="true"></div>
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-purple-500 to-primary"></div>
-        <div className="w-20 h-20 rounded-3xl overflow-hidden bg-primary/20 text-white flex items-center justify-center mx-auto mb-5 border border-white/20 shadow-lg">
+
+        <div className="relative z-10">
+        <div className="w-24 h-24 rounded-3xl overflow-hidden bg-primary/20 text-white flex items-center justify-center mx-auto mb-5 ring-4 ring-white/10 border border-white/30 shadow-2xl">
           {tailor?.profilePhoto ? (
             <img src={tailor.profilePhoto} alt={brandName} className="w-full h-full object-cover" />
           ) : (
@@ -175,6 +211,7 @@ export default function PublicPortfolio() {
               {items.length} piece{items.length > 1 ? 's' : ''} • {specialties.length} categor{specialties.length === 1 ? 'y' : 'ies'}
             </span>
           )}
+        </div>
         </div>
       </div>
 
