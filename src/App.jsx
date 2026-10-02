@@ -23,6 +23,8 @@ import Payments from './pages/Payments';
 import Measurements from './pages/Measurements';
 import Upgrade from './pages/Upgrade';
 import OrderCreate from './pages/OrderCreate';
+import PortfolioPage from './pages/PortfolioPage';
+import PublicPortfolio from './pages/PublicPortfolio';
 
 // Admin Pages
 import AdminLogin from './pages/admin/AdminLogin';
@@ -83,6 +85,10 @@ function App() {
 
           {/* Public Shared Measurement Form (Accessed via WhatsApp links by clients) */}
           <Route path="/measure-form" element={<PublicMeasurementForm />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
+
+// Outside auth, alongside your /measure-form route:
+<Route path="/portfolio/:userId" element={<PublicPortfolio />} />
 
           {/* =========================================
               SUPER ADMIN ROUTES
@@ -172,6 +178,7 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
+          
           
           <Route path="/orders" element={
             <ProtectedRoute>
