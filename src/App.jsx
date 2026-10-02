@@ -4,10 +4,9 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // Layouts
 import DashboardLayout from './layouts/DashboardLayout';
 import PublicLayout from './layouts/PublicLayout';
-import AdminLayout from './layouts/AdminLayout'; // <-- Admin Layout
+import AdminLayout from './layouts/AdminLayout';
 
 // Pages
-
 import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
@@ -34,7 +33,7 @@ import AdminTailorProfile from './pages/admin/AdminTailorProfile';
 import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminSettings from './pages/admin/AdminSettings';
-import AdminMessages from './pages/admin/AdminMessages'; // <-- NEW IMPORT
+import AdminMessages from './pages/admin/AdminMessages';
 
 // Protected Route Wrapper to block unauthenticated standard users
 const ProtectedRoute = ({ children }) => {
@@ -54,7 +53,7 @@ const AdminRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const userString = localStorage.getItem('user');
   let user = {};
-  
+
   try {
     if (userString) user = JSON.parse(userString);
   } catch (e) {
@@ -83,18 +82,15 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Public Shared Measurement Form (Accessed via WhatsApp links by clients) */}
+          {/* Public pages shared with clients (no login needed) */}
           <Route path="/measure-form" element={<PublicMeasurementForm />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
-
-// Outside auth, alongside your /measure-form route:
-<Route path="/portfolio/:userId" element={<PublicPortfolio />} />
+          <Route path="/portfolio/:userId" element={<PublicPortfolio />} />
 
           {/* =========================================
               SUPER ADMIN ROUTES
           ========================================= */}
           <Route path="/admin/login" element={<AdminLogin />} />
-          
+
           <Route path="/admin" element={
             <AdminRoute>
               <AdminLayout>
@@ -102,7 +98,7 @@ function App() {
               </AdminLayout>
             </AdminRoute>
           } />
-          
+
           <Route path="/admin/dashboard" element={
             <AdminRoute>
               <AdminLayout>
@@ -118,7 +114,7 @@ function App() {
               </AdminLayout>
             </AdminRoute>
           } />
-          
+
           <Route path="/admin/tailors/:id" element={
             <AdminRoute>
               <AdminLayout>
@@ -135,7 +131,6 @@ function App() {
             </AdminRoute>
           } />
 
-          {/* NEW CONTACT MESSAGES ROUTE */}
           <Route path="/admin/messages" element={
             <AdminRoute>
               <AdminLayout>
@@ -162,7 +157,7 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-          
+
           <Route path="/customers" element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -170,7 +165,7 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-          
+
           <Route path="/customers/:id" element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -178,8 +173,7 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-          
-          
+
           <Route path="/orders" element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -187,7 +181,15 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-          
+
+          <Route path="/orders/new" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <OrderCreate />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/payments" element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -195,7 +197,7 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-          
+
           <Route path="/measurements" element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -203,7 +205,16 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-          
+
+          {/* Portfolio manager (tailor's own dashboard page) */}
+          <Route path="/portfolio" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <PortfolioPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/settings" element={
             <ProtectedRoute>
               <DashboardLayout>
@@ -211,14 +222,7 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-{/* ADD THIS ROUTE HERE */}
-<Route path="/orders/new" element={
-  <ProtectedRoute>
-    <DashboardLayout>
-      <OrderCreate />
-    </DashboardLayout>
-  </ProtectedRoute>
-} />
+
           {/* Catch-all redirect back to landing page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
