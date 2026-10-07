@@ -20,11 +20,11 @@ export default function Upgrade() {
       // 2. Use Paystack PopUp (Inline JS) with a standard callback function
       const handler = window.PaystackPop.setup({
         key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_your_public_key_here',
-        email: response.data.email || 'tailor@tailorpro.com', 
-        amount: 350000, // ₦3,500 in kobo
+        email: response.data.email || 'tailor@tailorpro.com',
+        amount: 150000, // ₦1,500 in kobo
         currency: 'NGN',
-        reference: reference, 
-        
+        reference: reference,
+
         // Standard function to satisfy Paystack's strict type validation
         callback: function (paystackResponse) {
           api.post('/subscriptions/verify', { reference: paystackResponse.reference })
@@ -53,14 +53,14 @@ export default function Upgrade() {
 
   return (
     <div className="min-h-screen bg-brand-bg py-12 px-4 sm:px-6 lg:px-8 font-sans flex flex-col justify-center items-center relative overflow-hidden">
-      
+
       {/* Decorative Background Accents */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
 
       <div className="max-w-md w-full space-y-6 bg-white p-8 sm:p-10 rounded-[2rem] shadow-2xl border border-gray-100 relative z-10">
-        
+
         {/* Back Button */}
-        <button 
+        <button
           onClick={() => navigate('/dashboard')}
           className="absolute top-6 left-6 text-gray-400 hover:text-brand-dark transition-colors flex items-center gap-1.5 text-xs font-bold"
         >
@@ -87,7 +87,7 @@ export default function Upgrade() {
         <div className="bg-gray-50/80 p-6 rounded-3xl border border-gray-100 text-center space-y-2 relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary via-purple-500 to-primary"></div>
           <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-2">Monthly Subscription</p>
-          <div className="text-4xl font-black text-brand-dark">₦3,500 <span className="text-sm font-bold text-gray-400">/ mo</span></div>
+          <div className="text-4xl font-black text-brand-dark">₦1,500 <span className="text-sm font-bold text-gray-400">/ mo</span></div>
           <p className="text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 py-1.5 px-4 rounded-full inline-block mt-2 tracking-wide">
             Billed monthly. Cancel anytime.
           </p>
@@ -122,7 +122,7 @@ export default function Upgrade() {
             ) : (
               <>
                 <ShieldCheck className="w-5 h-5 text-primary group-hover:scale-110 transition-transform shrink-0" />
-                Pay ₦3,500 Securely
+                Pay ₦1,500 Securely
               </>
             )}
           </button>
