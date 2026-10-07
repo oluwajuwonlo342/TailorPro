@@ -9,6 +9,12 @@ import { Users, ShoppingBag, DollarSign, CheckCircle, Clock, Plus, ArrowUpRight,
 // Customers page open its add-customer form automatically (see CustomersPage snippet).
 const ADD_CUSTOMER_PATH = '/customers?add=true';
 
+// Where the "Upgrade to Pro" button goes. Must match whatever path Upgrade.jsx
+// is actually registered under in your router (e.g. <Route path="/upgrade" element={<Upgrade />} />).
+// This was previously '/settings/billing', which does not exist in the router and was
+// silently falling through to a catch-all redirect to the homepage.
+const UPGRADE_PATH = '/upgrade';
+
 export default function DashboardHome() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -168,7 +174,7 @@ export default function DashboardHome() {
           </div>
 
           <div className="shrink-0 w-full md:w-auto">
-            <Link to="/settings/billing" className="w-full inline-flex items-center justify-center px-6 py-3 bg-brand-dark text-white text-sm font-bold rounded-2xl hover:bg-black transition-colors shadow-sm">
+            <Link to={UPGRADE_PATH} className="w-full inline-flex items-center justify-center px-6 py-3 bg-brand-dark text-white text-sm font-bold rounded-2xl hover:bg-black transition-colors shadow-sm">
               Upgrade to Pro
             </Link>
           </div>
