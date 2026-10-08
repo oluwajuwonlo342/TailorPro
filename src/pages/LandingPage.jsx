@@ -176,7 +176,7 @@ export default function LandingPage() {
               
               <h3 className="text-2xl font-black mb-2 mt-4">Pro Plan</h3>
               <div className="flex items-baseline mb-6">
-                <span className="text-5xl font-black">₦3,500</span>
+                <span className="text-5xl font-black">₦1,500</span>
                 <span className="text-gray-400 font-bold ml-2">/month</span>
               </div>
               <p className="text-gray-400 mb-8 pb-8 border-b border-gray-800 font-medium leading-relaxed">For established fashion houses requiring unlimited capacity and advanced client tools.</p>
