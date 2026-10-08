@@ -34,7 +34,8 @@ import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminMessages from './pages/admin/AdminMessages';
-
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 // Protected Route Wrapper to block unauthenticated standard users
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -222,7 +223,8 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-
+<Route path="/terms" element={<TermsOfService />} />
+<Route path="/privacy" element={<PrivacyPolicy />} />
           {/* Catch-all redirect back to landing page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
