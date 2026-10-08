@@ -15,31 +15,37 @@ export default function DashboardLayout({ children }) {
   };
 
   const daysLeft = getTrialDaysLeft();
-  
+
   // Determine if the user has active Pro access (either paid or active trial)
   const isProActive = user?.plan === 'pro' || (user?.subscriptionStatus === 'trial' && daysLeft > 0);
 
-  // Add the 'requiresPro' flag to lock down premium features
+  // requiresPro:    item is shown but LOCKED (with padlock) for non-Pro users
+  // hideWhenNotPro: item is completely HIDDEN for non-Pro users
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, requiresPro: false },
     { name: 'Customers', href: '/customers', icon: Users, requiresPro: false },
-    { name: 'Portfolio', href: '/portfolio', icon: Image, requiresPro: false },
+    { name: 'Portfolio', href: '/portfolio', icon: Image, requiresPro: false, hideWhenNotPro: true },
     { name: 'Measurements', href: '/measurements', icon: Scissors, requiresPro: true },
     { name: 'Orders', href: '/orders', icon: ShoppingBag, requiresPro: true },
     { name: 'Payments', href: '/payments', icon: CreditCard, requiresPro: true },
   ];
+
+  // Remove hidden items entirely before rendering
+  const visibleNavigation = navigation.filter(
+    (item) => !(item.hideWhenNotPro && !isProActive)
+  );
 
   const brandName = user?.businessName || user?.brandName || 'My Brand';
   const userInitial = brandName.charAt(0).toUpperCase();
 
   return (
     <div className="flex h-screen bg-brand-bg font-sans">
-      
+
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-20 bg-brand-dark/50 lg:hidden" 
-          onClick={() => setSidebarOpen(false)} 
+        <div
+          className="fixed inset-0 z-20 bg-brand-dark/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
@@ -48,12 +54,12 @@ export default function DashboardLayout({ children }) {
         <div className="flex items-center justify-center h-16 border-b border-gray-800">
           <span className="text-2xl font-bold text-primary-light">TailorPro</span>
         </div>
-        
+
         <nav className="p-4 space-y-1">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive = location.pathname === item.href;
             const Icon = item.icon;
-            
+
             // Check if this specific item is locked for the current user
             const isLocked = item.requiresPro && !isProActive;
 
@@ -88,7 +94,7 @@ export default function DashboardLayout({ children }) {
             );
           })}
         </nav>
-        
+
         <div className="absolute bottom-0 w-full p-4 border-t border-gray-800">
           <button
             onClick={logout}
@@ -102,17 +108,17 @@ export default function DashboardLayout({ children }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
+
         {/* Top Header */}
         <header className="flex items-center justify-between px-4 sm:px-6 py-4 bg-white border-b border-gray-200">
           <button className="text-gray-500 lg:hidden focus:outline-none" onClick={() => setSidebarOpen(true)}>
             <Menu className="w-6 h-6" />
           </button>
-          
+
           <div className="flex-1 lg:flex-none"></div>
-          
+
           <div className="flex items-center space-x-2 sm:space-x-4">
-            
+
             {/* SaaS Plan Badges */}
             {user?.subscriptionStatus === 'trial' && daysLeft > 0 ? (
               <span className="px-3 py-1 text-xs sm:text-sm font-medium text-amber-700 bg-amber-50 rounded-full border border-amber-200 whitespace-nowrap flex items-center gap-2">
@@ -120,8 +126,8 @@ export default function DashboardLayout({ children }) {
                 Pro Trial — {daysLeft} days left
               </span>
             ) : user?.plan === 'free' || (user?.subscriptionStatus === 'trial' && daysLeft === 0) ? (
-              <Link 
-                to="/upgrade" 
+              <Link
+                to="/upgrade"
                 className="px-4 py-2 text-sm font-bold text-white bg-brand-dark rounded-full hover:bg-black transition-all shadow-md hover:shadow-lg whitespace-nowrap"
               >
                 Upgrade to Pro
@@ -129,8 +135,8 @@ export default function DashboardLayout({ children }) {
             ) : null /* Do not show any badge if they are an active paid PRO user */}
 
             {/* Clickable Profile Avatar */}
-            <Link 
-              to="/settings" 
+            <Link
+              to="/settings"
               className="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 p-1.5 pr-1.5 sm:pr-3 rounded-full border border-gray-200 transition-all cursor-pointer group ml-2"
               title="Go to Profile Settings"
             >
