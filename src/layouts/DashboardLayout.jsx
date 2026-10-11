@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Menu, LayoutDashboard, Users, Scissors, ShoppingBag, CreditCard, LogOut, Lock, Image, AlertTriangle, X } from 'lucide-react';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
-const REMINDER_DAYS = 20; // start reminding this many days before expiry
+const REMINDER_DAYS = 5; // start reminding this many days before expiry
 const DISMISS_KEY = 'proExpiryReminderDismissed';
 
 const todayKey = () => new Date().toLocaleDateString();
