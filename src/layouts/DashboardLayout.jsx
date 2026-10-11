@@ -1,16 +1,40 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, LayoutDashboard, Users, Scissors, ShoppingBag, CreditCard, LogOut, Lock, Image } from 'lucide-react';
+import { Menu, LayoutDashboard, Users, Scissors, ShoppingBag, CreditCard, LogOut, Lock, Image, AlertTriangle, X } from 'lucide-react';
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const REMINDER_DAYS = 5; // start reminding this many days before expiry
+const DISMISS_KEY = 'proExpiryReminderDismissed';
+
+const todayKey = () => new Date().toLocaleDateString();
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
 
+  // A dismissed reminder stays hidden for the rest of the day, then returns tomorrow
+  const [reminderDismissed, setReminderDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(DISMISS_KEY) === todayKey();
+    } catch {
+      return false;
+    }
+  });
+
+  const dismissReminder = () => {
+    setReminderDismissed(true);
+    try {
+      localStorage.setItem(DISMISS_KEY, todayKey());
+    } catch {
+      // storage unavailable: dismissal just lasts until the page reloads
+    }
+  };
+
   const getTrialDaysLeft = () => {
     if (!user?.trialEnd) return 0;
-    const daysLeft = Math.ceil((new Date(user.trialEnd) - new Date()) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.ceil((new Date(user.trialEnd) - new Date()) / MS_PER_DAY);
     return daysLeft > 0 ? daysLeft : 0;
   };
 
@@ -18,6 +42,28 @@ export default function DashboardLayout({ children }) {
 
   // Determine if the user has active Pro access (either paid or active trial)
   const isProActive = user?.plan === 'pro' || (user?.subscriptionStatus === 'trial' && daysLeft > 0);
+
+  // Work out what is about to expire: a paid subscription or the free trial
+  const getExpiry = () => {
+    if (user?.plan === 'pro' && user?.subscriptionEnd) {
+      return { type: 'subscription', date: new Date(user.subscriptionEnd) };
+    }
+    if (user?.subscriptionStatus === 'trial' && user?.trialEnd) {
+      return { type: 'trial', date: new Date(user.trialEnd) };
+    }
+    return null;
+  };
+
+  const expiry = getExpiry();
+  const expiryDaysLeft = expiry ? Math.ceil((expiry.date - new Date()) / MS_PER_DAY) : null;
+  const showReminder =
+    expiry !== null &&
+    expiryDaysLeft > 0 &&
+    expiryDaysLeft <= REMINDER_DAYS &&
+    !reminderDismissed;
+
+  const isUrgent = showReminder && expiryDaysLeft <= 2;
+  const dayWord = expiryDaysLeft === 1 ? 'day' : 'days';
 
   // requiresPro:    item is shown but LOCKED (with padlock) for non-Pro users
   // hideWhenNotPro: item is completely HIDDEN for non-Pro users
@@ -153,6 +199,41 @@ export default function DashboardLayout({ children }) {
             </Link>
           </div>
         </header>
+
+        {/* Pro expiry reminder: shown in the last 5 days, red in the final 2 */}
+        {showReminder && (
+          <div
+            className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-4 sm:px-6 py-3 border-b text-sm ${
+              isUrgent
+                ? 'bg-red-50 border-red-200 text-red-800'
+                : 'bg-amber-50 border-amber-200 text-amber-800'
+            }`}
+            role="alert"
+          >
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <p className="flex-1 min-w-[200px] font-medium">
+              {expiry.type === 'trial'
+                ? `Your Pro trial ends in ${expiryDaysLeft} ${dayWord} (${expiry.date.toLocaleDateString()}). Upgrade now to keep Measurements, Orders, Payments and Portfolio.`
+                : `Your Pro subscription expires in ${expiryDaysLeft} ${dayWord} (${expiry.date.toLocaleDateString()}). Renew now to avoid losing access to Measurements, Orders, Payments and Portfolio.`}
+            </p>
+            <Link
+              to="/upgrade"
+              className={`px-4 py-2 text-xs sm:text-sm font-bold text-white rounded-full transition-all whitespace-nowrap ${
+                isUrgent ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-dark hover:bg-black'
+              }`}
+            >
+              {expiry.type === 'trial' ? 'Upgrade now' : 'Renew now'}
+            </Link>
+            <button
+              onClick={dismissReminder}
+              className="p-1 rounded-full hover:bg-black/5 transition-colors"
+              aria-label="Dismiss reminder"
+              title="Dismiss for today"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
