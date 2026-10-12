@@ -3,56 +3,42 @@ import { TrendingUp, Users, Search, ShieldAlert, CheckCircle, XCircle } from 'lu
 import api from '../../services/api';
 
 export default function AdminSubscriptions() {
-  const [data, setData] = useState({ metrics: { totalPro: 0, totalFree: 0, monthlyRevenue: 0 }, subscribers: [] });
+  const [data, setData] = useState({
+    metrics: { totalPro: 0, totalFree: 0, monthlyRevenue: 0, proPrice: 0 },
+    subscribers: []
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [togglingId, setTogglingId] = useState(null);
 
-  const PRO_PRICE = 3500;
+  const fetchSubscriptions = async () => {
+    try {
+      const response = await api.get('/admin/subscriptions');
+      setData(response.data);
+      setError('');
+    } catch (err) {
+      console.error("Failed to fetch subscriptions", err);
+      setError('Failed to load subscription data.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchSubscriptions = async () => {
-      try {
-        const response = await api.get('/admin/subscriptions');
-        setData(response.data);
-      } catch (err) {
-        console.error("Failed to fetch subscriptions", err);
-        setError('Failed to load subscription data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchSubscriptions();
   }, []);
 
-  const handleTogglePro = async (userId, currentPlan, fullName) => {
-    const actionText = currentPlan === 'pro' ? 'revoke PRO access from' : 'grant PRO access to';
-    if (!window.confirm(`Are you sure you want to ${actionText} ${fullName || 'this user'}?`)) return;
+  const handleTogglePro = async (sub) => {
+    const isPro = sub.planLabel === 'PRO';
+    const actionText = isPro ? 'revoke PRO access from' : 'grant PRO access to';
+    if (!window.confirm(`Are you sure you want to ${actionText} ${sub.fullName || 'this user'}?`)) return;
 
-    setTogglingId(userId);
+    setTogglingId(sub._id);
     try {
-      const response = await api.put(`/admin/subscriptions/${userId}/toggle`);
-      
-      setData(prevData => {
-        // Update the specific user's status
-        const updatedSubscribers = prevData.subscribers.map(sub => 
-          sub._id === userId 
-            ? { ...sub, plan: response.data.plan, subscriptionStatus: response.data.subscriptionStatus } 
-            : sub
-        );
-        
-        // Dynamically recalculate the top metrics using ₦3,500
-        const totalPro = updatedSubscribers.filter(s => s.plan === 'pro').length;
-        const totalFree = updatedSubscribers.length - totalPro;
-        const monthlyRevenue = totalPro * PRO_PRICE;
-
-        return {
-          metrics: { totalPro, totalFree, monthlyRevenue },
-          subscribers: updatedSubscribers
-        };
-      });
+      await api.put(`/admin/subscriptions/${sub._id}/toggle`);
+      // Reload so the counts, MRR and labels always come from the server
+      await fetchSubscriptions();
     } catch (err) {
       console.error("Toggle error", err);
       alert(err.response?.data?.error || "Failed to update subscription status");
@@ -61,7 +47,21 @@ export default function AdminSubscriptions() {
     }
   };
 
-  const filteredSubscribers = data.subscribers.filter(sub => 
+  const getBillingText = (sub, short = false) => {
+    if (sub.planLabel === 'PRO') {
+      return sub.subscriptionEnd
+        ? `Active until ${new Date(sub.subscriptionEnd).toLocaleDateString()}`
+        : 'Active (no end date)';
+    }
+    if (sub.planLabel === 'TRIAL') {
+      return `${short ? 'Trial ends' : 'Ends'} ${new Date(sub.trialEnd).toLocaleDateString()}`;
+    }
+    return sub.plan === 'pro' || sub.subscriptionStatus === 'expired'
+      ? 'Subscription expired'
+      : 'No active billing';
+  };
+
+  const filteredSubscribers = data.subscribers.filter(sub =>
     sub.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sub.businessName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -71,6 +71,16 @@ export default function AdminSubscriptions() {
   }
 
   const { metrics } = data;
+
+  const buttonClass = (sub) =>
+    togglingId === sub._id
+      ? 'bg-gray-100 text-gray-400 cursor-wait'
+      : sub.planLabel === 'PRO'
+        ? 'bg-red-50 text-red-600 hover:bg-red-100'
+        : 'bg-primary/10 text-primary hover:bg-primary/20';
+
+  const buttonText = (sub) =>
+    togglingId === sub._id ? 'Updating...' : sub.planLabel === 'PRO' ? 'Revoke PRO' : 'Grant PRO';
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans px-3 sm:px-4 lg:px-0 pb-10">
@@ -92,8 +102,11 @@ export default function AdminSubscriptions() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between transition-all">
           <div className="min-w-0">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Monthly Revenue (MRR)</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-brand-dark truncate">₦{metrics.monthlyRevenue.toLocaleString()}</h3>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Estimated MRR</p>
+            <h3 className="text-2xl sm:text-3xl font-black text-brand-dark truncate">₦{(metrics.monthlyRevenue || 0).toLocaleString()}</h3>
+            <p className="text-[11px] font-medium text-gray-400 mt-1">
+              {metrics.totalPro} Pro × ₦{(metrics.proPrice || 0).toLocaleString()}
+            </p>
           </div>
           <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center bg-primary/10 shrink-0 ml-3">
             <TrendingUp className="w-5 h-5 sm:w-7 sm:h-7 text-primary" />
@@ -102,7 +115,7 @@ export default function AdminSubscriptions() {
 
         <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between transition-all">
           <div className="min-w-0">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Active PRO Tailors</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Active Pro</p>
             <h3 className="text-2xl sm:text-3xl font-black text-emerald-700">{metrics.totalPro}</h3>
           </div>
           <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center bg-emerald-50 shrink-0 ml-3">
@@ -125,9 +138,9 @@ export default function AdminSubscriptions() {
       <div className="bg-white p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm flex items-center">
         <div className="relative w-full sm:w-96">
           <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input 
-            type="text" 
-            placeholder="Search tailors or business names..." 
+          <input
+            type="text"
+            placeholder="Search tailors or business names..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-primary transition-all font-medium"
@@ -158,13 +171,13 @@ export default function AdminSubscriptions() {
                       <p className="text-xs text-gray-500">{sub.businessName || sub.email}</p>
                     </td>
                     <td className="p-5">
-                      {sub.plan === 'pro' ? (
+                      {sub.planLabel === 'PRO' ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
                           <CheckCircle className="w-3 h-3 mr-1" /> PRO PLAN
                         </span>
-                      ) : sub.subscriptionStatus === 'trial' ? (
+                      ) : sub.planLabel === 'TRIAL' ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
-                          14-DAY TRIAL
+                          FREE TRIAL
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
@@ -173,25 +186,15 @@ export default function AdminSubscriptions() {
                       )}
                     </td>
                     <td className="p-5 text-sm font-medium text-gray-600">
-                      {sub.plan === 'pro' 
-                        ? 'Active Recurring Billing' 
-                        : sub.subscriptionStatus === 'trial' 
-                          ? `Ends ${new Date(sub.trialEnd).toLocaleDateString()}` 
-                          : 'No active billing'}
+                      {getBillingText(sub)}
                     </td>
                     <td className="p-5 text-center">
-                      <button 
+                      <button
                         disabled={togglingId === sub._id}
-                        onClick={() => handleTogglePro(sub._id, sub.plan, sub.fullName)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
-                          togglingId === sub._id 
-                            ? 'bg-gray-100 text-gray-400 cursor-wait'
-                            : sub.plan === 'pro' 
-                              ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-                              : 'bg-primary/10 text-primary hover:bg-primary/20'
-                        }`}
+                        onClick={() => handleTogglePro(sub)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${buttonClass(sub)}`}
                       >
-                        {togglingId === sub._id ? 'Updating...' : sub.plan === 'pro' ? 'Revoke PRO' : 'Grant PRO'}
+                        {buttonText(sub)}
                       </button>
                     </td>
                   </tr>
@@ -217,11 +220,11 @@ export default function AdminSubscriptions() {
                     <p className="font-bold text-brand-dark text-sm truncate">{sub.fullName}</p>
                     <p className="text-xs text-gray-500 truncate">{sub.businessName || sub.email}</p>
                   </div>
-                  {sub.plan === 'pro' ? (
+                  {sub.planLabel === 'PRO' ? (
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 shrink-0">
                       <CheckCircle className="w-3 h-3 mr-1" /> PRO
                     </span>
-                  ) : sub.subscriptionStatus === 'trial' ? (
+                  ) : sub.planLabel === 'TRIAL' ? (
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 shrink-0">
                       TRIAL
                     </span>
@@ -232,26 +235,14 @@ export default function AdminSubscriptions() {
                   )}
                 </div>
 
-                <p className="text-xs font-medium text-gray-500">
-                  {sub.plan === 'pro' 
-                    ? 'Active Recurring Billing' 
-                    : sub.subscriptionStatus === 'trial' 
-                      ? `Trial ends ${new Date(sub.trialEnd).toLocaleDateString()}` 
-                      : 'No active billing'}
-                </p>
+                <p className="text-xs font-medium text-gray-500">{getBillingText(sub, true)}</p>
 
-                <button 
+                <button
                   disabled={togglingId === sub._id}
-                  onClick={() => handleTogglePro(sub._id, sub.plan, sub.fullName)}
-                  className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold transition-colors ${
-                    togglingId === sub._id 
-                      ? 'bg-gray-100 text-gray-400 cursor-wait'
-                      : sub.plan === 'pro' 
-                        ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-                        : 'bg-primary/10 text-primary hover:bg-primary/20'
-                  }`}
+                  onClick={() => handleTogglePro(sub)}
+                  className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold transition-colors ${buttonClass(sub)}`}
                 >
-                  {togglingId === sub._id ? 'Updating...' : sub.plan === 'pro' ? 'Revoke PRO' : 'Grant PRO'}
+                  {buttonText(sub)}
                 </button>
               </div>
             ))
