@@ -3,12 +3,20 @@ import { Link } from 'react-router-dom';
 import { Users, CreditCard, Activity, ArrowUpRight, AlertCircle, Zap } from 'lucide-react';
 import api from '../../services/api';
 
+const BADGE_STYLES = {
+  PRO: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  TRIAL: 'bg-blue-50 text-blue-700 border-blue-200',
+  FREE: 'bg-gray-100 text-gray-600 border-gray-200'
+};
+const BADGE_TEXT = { PRO: 'PRO PLAN', TRIAL: 'FREE TRIAL', FREE: 'FREE PLAN' };
+
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({ 
-    totalTailors: 0, 
-    activeSubscriptions: 0, 
+  const [stats, setStats] = useState({
+    totalTailors: 0,
+    activeSubscriptions: 0,
     revenue: 0,
-    recentTailors: [] 
+    collectedThisMonth: 0,
+    recentTailors: []
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,9 +38,10 @@ export default function AdminDashboard() {
   }, []);
 
   const statCards = [
-    { label: 'Registered Tailors', value: stats.totalTailors, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-    { label: 'Pro Subscriptions', value: stats.activeSubscriptions, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-    { label: 'Platform Revenue (MTD)', value: `₦${stats.revenue.toLocaleString()}`, icon: Activity, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
+    { label: 'Registered Tailors', value: stats.totalTailors, note: 'All tailor accounts', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+    { label: 'Active Pro', value: stats.activeSubscriptions, note: 'Currently on a paid or granted Pro plan', icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+    { label: 'Estimated MRR', value: `₦${(stats.revenue || 0).toLocaleString()}`, note: 'Active Pro × plan price', icon: Activity, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
+    { label: 'Collected This Month', value: `₦${(stats.collectedThisMonth || 0).toLocaleString()}`, note: 'Actual Paystack payments', icon: CreditCard, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
   ];
 
   if (loading) {
@@ -48,7 +57,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 font-sans px-4 sm:px-6 lg:px-8 pb-20 pt-4 sm:pt-8">
-      
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm">
         <div>
@@ -65,15 +74,16 @@ export default function AdminDashboard() {
       )}
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6">
         {statCards.map((stat, idx) => (
-          <div key={idx} className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow group">
-            <div>
+          <div key={idx} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow group">
+            <div className="min-w-0">
               <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{stat.label}</p>
-              <h3 className="text-3xl sm:text-4xl font-black text-brand-dark">{stat.value}</h3>
+              <h3 className="text-2xl sm:text-3xl font-black text-brand-dark truncate">{stat.value}</h3>
+              <p className="text-[11px] font-medium text-gray-400 mt-1">{stat.note}</p>
             </div>
-            <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center border ${stat.bg} ${stat.border} group-hover:scale-110 transition-transform duration-300 shadow-inner shrink-0`}>
-              <stat.icon className={`w-7 h-7 sm:w-8 sm:h-8 ${stat.color}`} />
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border ${stat.bg} ${stat.border} group-hover:scale-110 transition-transform duration-300 shadow-inner shrink-0 ml-3`}>
+              <stat.icon className={`w-7 h-7 ${stat.color}`} />
             </div>
           </div>
         ))}
@@ -87,7 +97,7 @@ export default function AdminDashboard() {
             View All <ArrowUpRight className="w-4 h-4 ml-1" />
           </Link>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
@@ -102,29 +112,27 @@ export default function AdminDashboard() {
               {stats.recentTailors && stats.recentTailors.length > 0 ? (
                 stats.recentTailors.map((tailor) => {
                   const initial = tailor.fullName ? tailor.fullName.charAt(0).toUpperCase() : 'T';
-                  const isPro = tailor.subscriptionStatus === 'pro';
+                  const label = tailor.planLabel || 'FREE';
 
                   return (
                     <tr key={tailor._id} className="hover:bg-gray-50/80 transition-colors group">
-                      <td className="p-5 flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-brand-dark text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-                          {initial}
-                        </div>
-                        <div>
-                          <p className="font-extrabold text-brand-dark text-sm">{tailor.fullName}</p>
-                          <p className="text-xs font-medium text-gray-500 mt-0.5">{tailor.email}</p>
+                      <td className="p-5">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-xl bg-brand-dark text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+                            {initial}
+                          </div>
+                          <div>
+                            <p className="font-extrabold text-brand-dark text-sm">{tailor.fullName}</p>
+                            <p className="text-xs font-medium text-gray-500 mt-0.5">{tailor.email}</p>
+                          </div>
                         </div>
                       </td>
                       <td className="p-5 text-sm font-bold text-gray-700">
                         {tailor.businessName || <span className="text-gray-400 italic">Not specified</span>}
                       </td>
                       <td className="p-5">
-                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
-                          isPro 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                            : 'bg-gray-100 text-gray-600 border-gray-200'
-                        }`}>
-                          {isPro ? 'PRO PLAN' : 'FREE PLAN'}
+                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${BADGE_STYLES[label]}`}>
+                          {BADGE_TEXT[label]}
                         </span>
                       </td>
                       <td className="p-5 text-sm text-gray-500 font-bold">
