@@ -427,14 +427,16 @@ export default function OrdersPage() {
 
       {/* Professional PDF Invoice Modal */}
       {invoiceOrder && (
-        <InvoiceModal
-          isOpen={!!invoiceOrder}
-          order={invoiceOrder}
-          customer={invoiceOrder.customer}
-          businessName={businessName}
-          logoUrl={user?.profilePhoto}
-          onClose={() => setInvoiceOrder(null)}
-        />
+     <InvoiceModal
+  isOpen={!!invoiceOrder}
+  order={invoiceOrder}
+  customer={invoiceOrder.customer}
+  businessName={businessName}
+  businessPhone={user?.phone}
+  businessAddress={user?.address}
+  logoUrl={user?.profilePhoto}
+  onClose={() => setInvoiceOrder(null)}
+/>
       )}
     </div>
   );
