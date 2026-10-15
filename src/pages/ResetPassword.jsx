@@ -21,7 +21,7 @@ export default function ResetPassword() {
   // After a successful reset, send the user to the login page
   useEffect(() => {
     if (!done) return undefined;
-    const timer = setTimeout(() => navigate('/login', { replace: true }), 4000);
+   const timer = setTimeout(() => navigate('/login', { replace: true, state: { passwordReset: true } }), 4000);
     return () => clearTimeout(timer);
   }, [done, navigate]);
 
