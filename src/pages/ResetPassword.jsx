@@ -168,9 +168,9 @@ export default function ResetPassword() {
 
         {!done && (
           <div className="text-center mt-6">
-            <Link to="/login" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-primary transition-colors">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to login
-            </Link>
+      <Link to="/login" state={{ passwordReset: true }} className="inline-block w-full py-3.5 bg-brand-dark text-white font-bold text-sm rounded-2xl hover:bg-black transition-all">
+  Go to login
+</Link>
           </div>
         )}
       </div>
