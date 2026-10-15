@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Mail, ArrowLeft, Scissors, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 
 const RESEND_SECONDS = 60;
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+const [email, setEmail] = useState(location.state?.email || '');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
