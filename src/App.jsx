@@ -12,6 +12,8 @@ import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import DashboardHome from './pages/DashboardHome';
 import CustomersPage from './pages/CustomersPage';
 import CustomerProfile from './pages/CustomerProfile';
@@ -24,6 +26,8 @@ import Upgrade from './pages/Upgrade';
 import OrderCreate from './pages/OrderCreate';
 import PortfolioPage from './pages/PortfolioPage';
 import PublicPortfolio from './pages/PublicPortfolio';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 // Admin Pages
 import AdminLogin from './pages/admin/AdminLogin';
@@ -34,8 +38,7 @@ import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminMessages from './pages/admin/AdminMessages';
-import TermsOfService from './pages/TermsOfService';
-import PrivacyPolicy from './pages/PrivacyPolicy';
+
 // Protected Route Wrapper to block unauthenticated standard users
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -78,10 +81,14 @@ function App() {
           <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
           <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
           <Route path="/upgrade" element={<Upgrade />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
 
           {/* Standard Authentication Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* Public pages shared with clients (no login needed) */}
           <Route path="/measure-form" element={<PublicMeasurementForm />} />
@@ -223,8 +230,7 @@ function App() {
               </DashboardLayout>
             </ProtectedRoute>
           } />
-<Route path="/terms" element={<TermsOfService />} />
-<Route path="/privacy" element={<PrivacyPolicy />} />
+
           {/* Catch-all redirect back to landing page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
